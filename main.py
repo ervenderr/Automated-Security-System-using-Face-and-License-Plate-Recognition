@@ -1,6 +1,5 @@
 import pickle
 import threading
-import torch
 import cv2
 from tkinter import *
 import face_recognition
@@ -17,6 +16,8 @@ from register import *
 import queue
 import re
 
+
+os.environ["DLIB_USE_CUDA"] = "1"
 reader = easyocr.Reader(['en'], gpu=True)
 # Load the YOLO model
 model_path = os.path.join('.', 'runs', 'detect', 'train', 'weights', 'last.pt')
@@ -309,7 +310,7 @@ class SSystem(ttk.Frame):
                 self.start_computation_thread()
 
             if self.counter != 0:
-                if self.counter == 1 and self.face_recognized and self.license_recognized:
+                if self.counter == 1 and self.face_recognized:
                     self.driver_info = db.child(f'Drivers/{self.id}').get().val()
                     print(self.driver_info)
 
@@ -512,14 +513,15 @@ class SSystem(ttk.Frame):
             {"text": "Name", "stretch": False},
             {"text": "ID number", "stretch": False},
             {"text": "Plate number", "stretch": False},
+            {"text": "Phone", "stretch": False},
             {"text": "Date", "stretch": False},
             {"text": "Time in", "stretch": False},
             {"text": "Time out", "stretch": False},
         ]
 
         rowdata = [
-            ('Erven', '01853', 'ABC123', '2023-8-8', '7:00 AM', ''),
-            ('Andre', '01799', 'QWE456', '2023-8-8', '7:00 AM', ''),
+            ('Erven', '01853', 'ABC123', '2023-8-8', '7:00 AM', '4:10 pM'),
+            ('Andre', '01799', 'QWE456', '2023-8-8', '7:00 AM', '4:21 pM'),
         ]
 
         dt = Tableview(
