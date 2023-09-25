@@ -305,6 +305,7 @@ class SSystem(ttk.Frame):
         camera_label.after(30, self.update_camera, cap, camera_label, camera_id)
 
     def process_face_recognition(self, current_encode, current_face, face_cam, camera_label):
+
         with self.face_lock:  # Use the lock to ensure thread safety
             for encode_face, face_location in zip(current_encode, current_face):
                 top, right, bottom, left = face_location
