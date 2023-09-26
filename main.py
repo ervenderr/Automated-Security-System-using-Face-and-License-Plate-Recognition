@@ -268,7 +268,7 @@ class SSystem(ttk.Frame):
               # Resize frame for display
 
             # Perform face recognition on the second camera feed (camera_id=1)
-            if camera_id == 1:
+            if camera_id == 0:
                 face_cam = frame
                 face_photo = ImageTk.PhotoImage(image=Image.fromarray(face_cam))
                 camera_label.configure(image=face_photo, borderwidth=1, relief="solid")
@@ -287,7 +287,7 @@ class SSystem(ttk.Frame):
                 except Exception as e:
                     print("Error in face recognition:", e)
 
-            if camera_id == 0:
+            if camera_id == 1:
                 self.license_cam = frame
 
                 self.start_computation_thread()
@@ -314,6 +314,7 @@ class SSystem(ttk.Frame):
         camera_label.after(30, self.update_camera, cap, camera_label, camera_id)
 
     def process_face_recognition(self, current_encode, current_face, face_cam, camera_label):
+
         with self.face_lock:  # Use the lock to ensure thread safety
             for encode_face, face_location in zip(current_encode, current_face):
                 top, right, bottom, left = face_location
