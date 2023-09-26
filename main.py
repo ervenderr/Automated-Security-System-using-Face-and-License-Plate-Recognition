@@ -11,11 +11,12 @@ import easyocr
 import os
 from ultralytics import YOLO
 from firebase_admin import db
-from registered_vehicles import *
 from history_logs import *
 from register import *
 import queue
 import re
+from pyfirmata import Arduino, SERVO, util
+from time import sleep
 
 reader = easyocr.Reader(['en'], gpu=True)
 # Load the YOLO model
@@ -25,10 +26,19 @@ threshold = 0.5
 
 frame_queue = queue.Queue()
 
+# port = 'COM6'
+# pin = 10
+# board = Arduino(port)
+#
+# board.digital[pin].mode = SERVO
+
 
 class SSystem(ttk.Frame):
     def __init__(self, master_window):
 
+        self.cap = None
+        self.face_cam = None
+        self.data_from_db = None
         master_window.attributes('-fullscreen', True)
         master_window.bind('<Escape>', lambda event: master_window.attributes('-fullscreen', False))
 
@@ -50,6 +60,10 @@ class SSystem(ttk.Frame):
         self.id_number = ttk.StringVar(value="")
         self.phone = ttk.StringVar(value="")
         self.plate = ttk.StringVar(value="")
+        current_time = datetime.datetime.now().strftime("%H:%M:%S")  # Current time
+        self.time_in = current_time
+        self.time_out = current_time
+        self.date = self.date = datetime.date.today().strftime("%Y-%m-%d")
         self.profile_icon_path = ""
         self.data = []
         self.img_driver = []
@@ -57,6 +71,7 @@ class SSystem(ttk.Frame):
         self.counter = 0
         self.id = -1
         self.driver_info = None
+        self.vehicle_info = None
 
         # load encoding file
         self.file = open('Encode_file.p', 'rb')
@@ -85,9 +100,9 @@ class SSystem(ttk.Frame):
         self.nav_bar.add(registration_tab, text="Driver Registration")
 
         self.setup_home_tab(home_tab)
-        self.setup_logs_tab(logs_tab)
-        self.setup_registered_vehicle_tab(registered_tab)
-        self.setup_register_tab(registration_tab)
+        # self.setup_logs_tab(logs_tab)
+        # self.setup_registered_vehicle_tab(registered_tab)
+        # self.setup_register_tab(registration_tab)
 
         self.face_recognized = True
         self.license_recognized = False
@@ -96,6 +111,8 @@ class SSystem(ttk.Frame):
         # Create variables to track the camera border colors
         self.camera_border_color1 = "black"  # Default color
         self.camera_border_color2 = "black"  # Default color
+
+        self.face_lock = threading.Lock()
 
     def setup_home_tab(self, home_tab):
         # Container frame for camera feeds and driver details
@@ -160,9 +177,9 @@ class SSystem(ttk.Frame):
         self.camera_label2 = ttk.Label(camera_container, borderwidth=3, relief="solid", style="license_border.TLabel")
         self.camera_label2.pack(side=RIGHT)
 
-        self.start_camera_feed(0, self.camera_label1)
+        self.start_camera_feed(1, self.camera_label1)
         # Start the second camera feed (camera_id=1)
-        self.start_camera_feed(1, self.camera_label2)
+        self.start_camera_feed(0, self.camera_label2)
 
         # Separator line between camera feeds and driver details
         separator = ttk.Separator(container_frame, orient=VERTICAL)
@@ -214,11 +231,11 @@ class SSystem(ttk.Frame):
             self.driver_name.set(self.driver_info.get("name", ""))
             self.id_number.set(self.driver_info.get("id_number", ""))
             self.phone.set(self.driver_info.get("phone", ""))
-            self.plate.set(self.driver_info.get("plate_number", ""))
+            # self.plate.set(self.driver_info.get("plate_number", ""))
 
             # Display the driver's image
             driver_image = Image.fromarray(self.img_driver)
-            driver_image = driver_image.resize((150, 150), Image.Resampling.LANCZOS)
+            driver_image = driver_image.resize((250, 250), Image.Resampling.LANCZOS)
 
             # Convert color channels from BGR to RGB
             driver_image = Image.merge("RGB", driver_image.split()[::-1])
@@ -227,21 +244,21 @@ class SSystem(ttk.Frame):
             self.driver_image_label.configure(image=driver_image)
             self.driver_image_label.image = driver_image  # Keep a reference to avoid garbage collection
 
-    def setup_logs_tab(self, parent_tab):
-        history_logs_tab(parent_tab)
-
-    def setup_registered_vehicle_tab(self, parent_tab):
-        registered_vehicle_tab(parent_tab)
-
-    def setup_register_tab(self, parent_tab):
-        create_driver(parent_tab)
+    # def setup_logs_tab(self, parent_tab):
+    #     history_logs_tab(parent_tab)
+    #
+    # def setup_registered_vehicle_tab(self, parent_tab):
+    #     registered_vehicle_tab(parent_tab)
+    #
+    # def setup_register_tab(self, parent_tab):
+    #     create_driver(parent_tab)
 
     def start_camera_feed(self, camera_id, camera_label):
         # Open the camera with the specified camera_id
-        cap = cv2.VideoCapture(camera_id)
+        self.cap = cv2.VideoCapture(camera_id)
 
         # Continuously read frames from the camera and display them on the GUI
-        self.update_camera(cap, camera_label, camera_id)
+        self.update_camera(self.cap, camera_label, camera_id)
 
     def update_camera(self, cap, camera_label, camera_id):
         ret, frame = cap.read()
@@ -257,48 +274,15 @@ class SSystem(ttk.Frame):
                 camera_label.configure(image=face_photo, borderwidth=1, relief="solid")
 
                 try:
-                    current_face = face_recognition.face_locations(frame)
-                    current_encode = face_recognition.face_encodings(frame, current_face)
+                    current_face = face_recognition.face_locations(face_cam)
+                    current_encode = face_recognition.face_encodings(face_cam, current_face)
 
-                    for encode_face, face_location in zip(current_encode, current_face):
-                        top, right, bottom, left = face_location
-                        matches = face_recognition.compare_faces(self.encode_list_known, encode_face)
-                        face_dis = face_recognition.face_distance(self.encode_list_known, encode_face)
-
-                        match_index = np.argmin(face_dis)
-                        if matches[match_index]:
-                            self.id = self.driver_ids[match_index]
-                            cv2.rectangle(face_cam, (left, top), (right, bottom), (0, 255, 0), 2)  # Draw green bbox
-
-                            if self.counter == 0:
-                                text = "Waiting for recognition..."
-                                font = cv2.FONT_HERSHEY_SIMPLEX
-                                font_scale = 0.5
-                                font_color = (255, 255, 255)  # White color
-                                line_thickness = 1
-
-                                # Calculate the text size to position it above the bounding box
-                                text_size = cv2.getTextSize(text, font, font_scale, line_thickness)[0]
-                                text_x = left + (right - left - text_size[0]) // 2
-                                text_y = top - 10
-
-                                cv2.putText(face_cam, text, (text_x, text_y), font, font_scale, font_color,
-                                            line_thickness, cv2.LINE_AA)
-                                cv2.waitKey(1)
-                                self.counter = 1
-
-                            # Set the face_recognized flag to True when the face is recognized
-                            self.face_recognized = True
-                            self.camera_border_color2 = "#00ff00"
-                            self.border_style.configure("face_border.TLabel", bordercolor=self.camera_border_color2,
-                                                        borderwidth=4)
-
-                        else:
-                            cv2.rectangle(frame, (left, top), (right, bottom), (255, 0, 0), 3)  # Draw red bbox
-                            self.camera_border_color2 = "#ff0000"
-                            self.border_style.configure("face_border.TLabel", bordercolor=self.camera_border_color2,
-                                                        borderwidth=4)
-                            print("Unauthorized")
+                    # Multithreading for face recognition
+                    face_thread = threading.Thread(
+                        target=self.process_face_recognition,
+                        args=(current_encode, current_face, face_cam, camera_label)
+                    )
+                    face_thread.start()
 
                 except Exception as e:
                     print("Error in face recognition:", e)
@@ -309,7 +293,7 @@ class SSystem(ttk.Frame):
                 self.start_computation_thread()
 
             if self.counter != 0:
-                if self.counter == 1 and self.face_recognized and self.license_recognized:
+                if self.counter == 1 and self.face_recognized:
                     self.driver_info = db.child(f'Drivers/{self.id}').get().val()
                     print(self.driver_info)
 
@@ -328,6 +312,48 @@ class SSystem(ttk.Frame):
 
         # Repeat the update after a delay
         camera_label.after(30, self.update_camera, cap, camera_label, camera_id)
+
+    def process_face_recognition(self, current_encode, current_face, face_cam, camera_label):
+        with self.face_lock:  # Use the lock to ensure thread safety
+            for encode_face, face_location in zip(current_encode, current_face):
+                top, right, bottom, left = face_location
+                matches = face_recognition.compare_faces(self.encode_list_known, encode_face)
+                face_dis = face_recognition.face_distance(self.encode_list_known, encode_face)
+
+                match_index = np.argmin(face_dis)
+                if matches[match_index]:
+                    self.id = self.driver_ids[match_index]
+                    cv2.rectangle(face_cam, (left, top), (right, bottom), (0, 255, 0), 2)  # Draw green bbox
+
+                    if self.counter == 0:
+                        text = "Waiting for recognition..."
+                        font = cv2.FONT_HERSHEY_SIMPLEX
+                        font_scale = 0.5
+                        font_color = (255, 255, 255)  # White color
+                        line_thickness = 1
+
+                        # Calculate the text size to position it above the bounding box
+                        text_size = cv2.getTextSize(text, font, font_scale, line_thickness)[0]
+                        text_x = left + (right - left - text_size[0]) // 2
+                        text_y = top - 10
+
+                        cv2.putText(face_cam, text, (text_x, text_y), font, font_scale, font_color,
+                                    line_thickness, cv2.LINE_AA)
+                        cv2.waitKey(1)
+                        self.counter = 1
+
+                    # Set the face_recognized flag to True when the face is recognized
+                    self.face_recognized = True
+                    self.camera_border_color2 = "#00ff00"
+                    self.border_style.configure("face_border.TLabel", bordercolor=self.camera_border_color2,
+                                                borderwidth=4)
+
+                else:
+                    cv2.rectangle(face_cam, (left, top), (right, bottom), (255, 0, 0), 3)  # Draw red bbox
+                    self.camera_border_color2 = "#ff0000"
+                    self.border_style.configure("face_border.TLabel", bordercolor=self.camera_border_color2,
+                                                borderwidth=4)
+                    print("Unauthorized")
 
     def start_computation_thread(self):
         computation_thread = threading.Thread(target=self.run_model_computation, args=(self.license_cam,))
@@ -399,8 +425,8 @@ class SSystem(ttk.Frame):
 
                 # Convert the license_cam image to PhotoImage for display
                 photo = ImageTk.PhotoImage(image=Image.fromarray(self.license_cam))
-                self.camera_label1.configure(image=photo)
-                self.camera_label1.image = photo
+                self.camera_label2.configure(image=photo)
+                self.camera_label2.image = photo
 
         # Schedule the GUI update method in the main thread
         frame_queue.put(self.license_cam)
@@ -461,7 +487,21 @@ class SSystem(ttk.Frame):
         )
         submit_btn.grid(row=0, column=1, padx=5)
 
+    # def rotateservo(self, pin, angle):
+    #     board.digital[pin].write(angle)
+    #     sleep(0.015)
+
     def clock_in(self):
+
+        # self.plate = "NONE"
+        #
+        # logs_data = (
+        #     self.driver_name.get(), self.id_number.get(), self.phone.get(), self.plate, self.date, self.time_in,
+        #     self.time_out)
+        #
+        # c.execute("INSERT INTO daily_logs VALUES (?, ?, ?, ?, ?, ?, ?)", logs_data)
+        # conn.commit()
+        #
         self.counter = 0
 
         self.driver_info = None
@@ -470,14 +510,14 @@ class SSystem(ttk.Frame):
         # Reset driver's image to default (profile_icon)
         profile_icon_path = "images/Profile_Icon.png"
         profile_icon_image = Image.open(profile_icon_path)
-        profile_icon_image = profile_icon_image.resize((150, 150), Image.Resampling.LANCZOS)
+        profile_icon_image = profile_icon_image.resize((250, 250), Image.Resampling.LANCZOS)
         self.img_driver = np.array(profile_icon_image)
 
         # Explicitly reset the GUI elements to their default values
         self.driver_name.set("")
         self.id_number.set("")
         self.phone.set("")
-        self.plate.set("")
+        # self.plate.set("")
 
         self.driver_image_label.configure(image=self.profile_icon)
         self.driver_image_label.image = self.profile_icon
@@ -493,9 +533,15 @@ class SSystem(ttk.Frame):
             message="YEHEY SUCCESS",
             duration=3000,
         )
+
         toast.show_toast()
 
+        # for i in range(0, 360):
+        #     self.rotateservo(pin, i)
+
     def on_cancel(self):
+        if self.cap is not None:
+            self.cap.release()
         self.quit()
 
     def create_table(self):
@@ -512,15 +558,16 @@ class SSystem(ttk.Frame):
             {"text": "Name", "stretch": False},
             {"text": "ID number", "stretch": False},
             {"text": "Plate number", "stretch": False},
+            {"text": "Phone", "stretch": False},
             {"text": "Date", "stretch": False},
             {"text": "Time in", "stretch": False},
             {"text": "Time out", "stretch": False},
         ]
 
-        rowdata = [
-            ('Erven', '01853', 'ABC123', '2023-8-8', '7:00 AM', ''),
-            ('Andre', '01799', 'QWE456', '2023-8-8', '7:00 AM', ''),
-        ]
+        c.execute("SELECT * FROM daily_logs")
+        self.data_from_db = c.fetchall()
+
+        rowdata = [list(row) for row in self.data_from_db]
 
         dt = Tableview(
             master=plate_frame,

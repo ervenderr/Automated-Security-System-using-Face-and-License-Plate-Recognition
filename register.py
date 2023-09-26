@@ -2,13 +2,9 @@ from PIL import Image, ImageTk
 import ttkbootstrap as ttk
 from ttkbootstrap.constants import *
 from ttkbootstrap import Style
-from ttkbootstrap.toast import ToastNotification
-from ttkbootstrap.tableview import Tableview
 from database import *
-import tkinter as tk
 from tkinter import filedialog
-from tkinter.filedialog import askopenfile
-from io import BytesIO
+
 
 profile_icon = None
 DEFAULT_PROFILE_ICON_PATH = "images/Profile_Icon.png"

@@ -1,5 +1,5 @@
 import cv2
-import face_recognition
+import face_recog
 import pickle
 import os
 from PIL import Image, ImageTk

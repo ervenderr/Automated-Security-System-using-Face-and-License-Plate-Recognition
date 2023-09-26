@@ -2,6 +2,7 @@
 import pyrebase
 import firebase_admin
 from firebase_admin import credentials, storage
+import sqlite3
 
 cred = credentials.Certificate("serviceAccountKey.json")
 firebase_admin.initialize_app(cred, {
@@ -23,4 +24,30 @@ firebase = pyrebase.initialize_app(firebaseConfig)
 
 pyre_storage = firebase.storage()
 db = firebase.database()
+
+# plate = "NBC1234"
+# ids = '01853'
+# plate_number = None
+#
+# driver_info = db.child(f'Drivers/{ids}').get().val()
+# vehicle_data = db.child('Vehicles').get().val()
+#
+# if vehicle_data is not None:
+#     for plate, vehicle_info in vehicle_data.items():
+#         drivers = vehicle_info.get('drivers', {})
+#         if str(ids) in drivers:
+#             plate_number = vehicle_info['plate_number']
+#             break
+#
+#
+# if plate_number is not None:
+#     print(f"The plate number associated with id_number {ids} is: {plate_number}")
+# else:
+#     print(f"No plate number found for id_number {ids}")
+
+conn = sqlite3.connect('drivers.db')
+c = conn.cursor()
+# c.execute("SELECT * FROM daily_logs")
+print(c.fetchall())
+conn.commit()
 
