@@ -36,6 +36,9 @@ frame_queue = queue.Queue()
 class SSystem(ttk.Frame):
     def __init__(self, master_window):
 
+        self.face_recognition_enabled = False
+        self.license_recognition_enabled = False
+        self.tab_frames = []
         self.cap = None
         self.face_cam = None
         self.data_from_db = None
@@ -59,6 +62,9 @@ class SSystem(ttk.Frame):
         self.driver_name = ttk.StringVar(value="")
         self.id_number = ttk.StringVar(value="")
         self.phone = ttk.StringVar(value="")
+        self.plate = ttk.StringVar(value="")
+        self.vehicle_type = ttk.StringVar(value="")
+        self.vehicle_color = ttk.StringVar(value="")
         self.plate = ttk.StringVar(value="")
         current_time = datetime.datetime.now().strftime("%H:%M:%S")  # Current time
         self.time_in = current_time
@@ -86,23 +92,27 @@ class SSystem(ttk.Frame):
         # Home Tab
         home_tab = ttk.Frame(self.nav_bar)
         self.nav_bar.add(home_tab, text="Home")
+        self.tab_frames.append(home_tab)
 
         # Logs Tab
         logs_tab = ttk.Frame(self.nav_bar)
         self.nav_bar.add(logs_tab, text="History Logs")
+        self.tab_frames.append(logs_tab)
 
-        # registered Tab
-        registered_tab = ttk.Frame(self.nav_bar)
-        self.nav_bar.add(registered_tab, text="Registered Vehicle")
+        self.nav_bar.bind("<<NotebookTabChanged>>", self.on_tab_change)
+
+        # # registered Tab
+        # registered_tab = ttk.Frame(self.nav_bar)
+        # self.nav_bar.add(registered_tab, text="Registered Vehicle")
 
         # registration Tab
         registration_tab = ttk.Frame(self.nav_bar)
         self.nav_bar.add(registration_tab, text="Driver Registration")
+        self.tab_frames.append(registration_tab)
 
         self.setup_home_tab(home_tab)
-        # self.setup_logs_tab(logs_tab)
-        # self.setup_registered_vehicle_tab(registered_tab)
-        # self.setup_register_tab(registration_tab)
+        self.setup_logs_tab(logs_tab)
+        self.setup_register_tab(registration_tab)
 
         self.face_recognized = True
         self.license_recognized = False
@@ -113,6 +123,20 @@ class SSystem(ttk.Frame):
         self.camera_border_color2 = "black"  # Default color
 
         self.face_lock = threading.Lock()
+
+    def on_tab_change(self, event):
+        current_tab_index = self.nav_bar.index(self.nav_bar.select())
+
+        print(current_tab_index)
+
+        # Check if the "Home" tab is selected, enable face recognition
+        if current_tab_index == 0:
+            self.face_recognition_enabled = True
+            self.license_recognition_enabled = True
+        else:
+            # Disable face recognition and license plate recognition for other tabs
+            self.face_recognition_enabled = False
+            self.license_recognition_enabled = False
 
     def setup_home_tab(self, home_tab):
         # Container frame for camera feeds and driver details
@@ -177,9 +201,9 @@ class SSystem(ttk.Frame):
         self.camera_label2 = ttk.Label(camera_container, borderwidth=3, relief="solid", style="license_border.TLabel")
         self.camera_label2.pack(side=RIGHT)
 
-        self.start_camera_feed(1, self.camera_label1)
+        self.start_camera_feed(0, self.camera_label1)
         # Start the second camera feed (camera_id=1)
-        self.start_camera_feed(0, self.camera_label2)
+        self.start_camera_feed(1, self.camera_label2)
 
         # Separator line between camera feeds and driver details
         separator = ttk.Separator(container_frame, orient=VERTICAL)
@@ -212,8 +236,9 @@ class SSystem(ttk.Frame):
         instruction = ttk.Label(profile_driver_frame, text=instruction_text)
         instruction.pack(fill=X, pady=10)
 
-        form_entry_labels = ["Name: ", "ID number: ", "Plate number: ", "Phone: "]
-        form_entry_vars = [self.driver_name, self.id_number, self.plate, self.phone]
+        form_entry_labels = ["Name: ", "ID number: ", "Plate number: ", "Phone: ", "Vehicle type: ", "Vehicle color: "]
+        form_entry_vars = [self.driver_name, self.id_number, self.plate, self.phone, self.vehicle_type,
+                           self.vehicle_color]
 
         for i, (label, var) in enumerate(zip(form_entry_labels, form_entry_vars)):
             self.create_form_entry(profile_driver_frame, label, var)
@@ -227,11 +252,13 @@ class SSystem(ttk.Frame):
         self.master_window.after(1000, lambda: self.update_time_date(label))
 
     def update_driver_details(self):
-        if self.driver_info is not None and self.img_driver is not None:
+        if self.driver_info is not None and self.img_driver is not None and self.vehicle_info is not None:
             self.driver_name.set(self.driver_info.get("name", ""))
             self.id_number.set(self.driver_info.get("id_number", ""))
             self.phone.set(self.driver_info.get("phone", ""))
-            # self.plate.set(self.driver_info.get("plate_number", ""))
+            self.plate.set(self.vehicle_info.get("plate_number", ""))
+            self.vehicle_type.set(self.vehicle_info.get("vehicle_type", ""))
+            self.vehicle_color.set(self.vehicle_info.get("vehicle_color", ""))
 
             # Display the driver's image
             driver_image = Image.fromarray(self.img_driver)
@@ -244,14 +271,11 @@ class SSystem(ttk.Frame):
             self.driver_image_label.configure(image=driver_image)
             self.driver_image_label.image = driver_image  # Keep a reference to avoid garbage collection
 
-    # def setup_logs_tab(self, parent_tab):
-    #     history_logs_tab(parent_tab)
-    #
-    # def setup_registered_vehicle_tab(self, parent_tab):
-    #     registered_vehicle_tab(parent_tab)
-    #
-    # def setup_register_tab(self, parent_tab):
-    #     create_driver(parent_tab)
+    def setup_logs_tab(self, parent_tab):
+        history_logs_tab(parent_tab)
+
+    def setup_register_tab(self, parent_tab):
+        create_driver(parent_tab)
 
     def start_camera_feed(self, camera_id, camera_label):
         # Open the camera with the specified camera_id
@@ -268,7 +292,7 @@ class SSystem(ttk.Frame):
               # Resize frame for display
 
             # Perform face recognition on the second camera feed (camera_id=1)
-            if camera_id == 0:
+            if self.face_recognition_enabled and camera_id == 0:
                 face_cam = frame
                 face_photo = ImageTk.PhotoImage(image=Image.fromarray(face_cam))
                 camera_label.configure(image=face_photo, borderwidth=1, relief="solid")
@@ -287,7 +311,7 @@ class SSystem(ttk.Frame):
                 except Exception as e:
                     print("Error in face recognition:", e)
 
-            if camera_id == 1:
+            if self.license_recognition_enabled and camera_id == 0:
                 self.license_cam = frame
 
                 self.start_computation_thread()
@@ -415,6 +439,8 @@ class SSystem(ttk.Frame):
                         vehicle_data = db.child('Vehicles').get().val()
 
                         if extracted_text in vehicle_data:
+                            self.vehicle_info = db.child(f'Vehicles/{extracted_text}').get().val()
+
                             print(f"License plate {extracted_text} is in the vehicles data.")
                             self.license_recognized = True
                             self.camera_border_color2 = "#00ff00"
@@ -507,6 +533,7 @@ class SSystem(ttk.Frame):
 
         self.driver_info = None
         self.img_driver = None
+        self.vehicle_info = None
 
         # Reset driver's image to default (profile_icon)
         profile_icon_path = "images/Profile_Icon.png"
@@ -518,7 +545,7 @@ class SSystem(ttk.Frame):
         self.driver_name.set("")
         self.id_number.set("")
         self.phone.set("")
-        # self.plate.set("")
+        self.plate.set("")
 
         self.driver_image_label.configure(image=self.profile_icon)
         self.driver_image_label.image = self.profile_icon
