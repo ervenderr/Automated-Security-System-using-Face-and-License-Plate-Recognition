@@ -1,6 +1,6 @@
 import pickle
 import threading
-import torch
+# import torch
 import cv2
 from tkinter import *
 import face_recognition
@@ -12,11 +12,17 @@ import os
 from ultralytics import YOLO
 from firebase_admin import db
 from history_logs import *
-from register import *
+from register import create_driver
 import queue
 import re
-from pyfirmata import Arduino, SERVO, util
-from time import sleep
+# from pyfirmata import Arduino, SERVO, util
+# from time import sleep
+from PIL import Image, ImageTk
+import ttkbootstrap as ttk
+from ttkbootstrap.constants import *
+from ttkbootstrap import Style
+from ttkbootstrap.dialogs import Messagebox
+from database import *
 
 reader = easyocr.Reader(['en'], gpu=True)
 # Load the YOLO model
@@ -36,6 +42,9 @@ frame_queue = queue.Queue()
 class SSystem(ttk.Frame):
     def __init__(self, master_window):
 
+        self.extracted_text = None
+        self.vehicle_data = None
+        self.matched = False
         self.face_recognition_enabled = False
         self.license_recognition_enabled = False
         self.tab_frames = []
@@ -74,7 +83,8 @@ class SSystem(ttk.Frame):
         self.data = []
         self.img_driver = []
         self.colors = master_window.style.colors
-        self.counter = 0
+        self.face_counter = 0
+        self.license_counter = 0
         self.id = -1
         self.driver_info = None
         self.vehicle_info = None
@@ -114,7 +124,7 @@ class SSystem(ttk.Frame):
         self.setup_logs_tab(logs_tab)
         self.setup_register_tab(registration_tab)
 
-        self.face_recognized = True
+        self.face_recognized = False
         self.license_recognized = False
         self.authorization_timer = None
 
@@ -292,7 +302,7 @@ class SSystem(ttk.Frame):
               # Resize frame for display
 
             # Perform face recognition on the second camera feed (camera_id=1)
-            if self.face_recognition_enabled and camera_id == 0:
+            if self.face_recognition_enabled and camera_id == 4:
                 face_cam = frame
                 face_photo = ImageTk.PhotoImage(image=Image.fromarray(face_cam))
                 camera_label.configure(image=face_photo, borderwidth=1, relief="solid")
@@ -311,14 +321,21 @@ class SSystem(ttk.Frame):
                 except Exception as e:
                     print("Error in face recognition:", e)
 
-            if self.license_recognition_enabled and camera_id == 0:
+            if self.license_recognition_enabled and camera_id == 4:
                 self.license_cam = frame
 
                 self.start_computation_thread()
 
-            if self.counter != 0:
-                if self.counter == 1 and self.face_recognized:
+            if (self.face_counter and self.license_counter) != 0:
+
+                if ((self.face_counter and self.license_counter) == 1 and self.face_recognized and
+                        self.license_recognized):
+
+                    print("id: ", self.id)
+                    print("extracted_text : ", self.extracted_text)
+
                     self.driver_info = db.child(f'Drivers/{self.id}').get().val()
+                    self.vehicle_info = db.child(f'Vehicles/{self.extracted_text}').get().val()
                     print(self.driver_info)
 
                     bucket = storage.bucket()
@@ -326,8 +343,16 @@ class SSystem(ttk.Frame):
                     array = np.frombuffer(blob.download_as_string(), np.uint8)
                     self.img_driver = cv2.imdecode(array, cv2.COLOR_BGR2RGB)
 
-                    self.counter += 1
-                    self.update_driver_details()
+                    self.face_counter += 1
+                    self.license_counter += 1
+
+                    if self.id in self.vehicle_info:
+                        self.update_driver_details()
+
+                    elif not self.matched:
+                        self.not_match()
+                        self.matched = True
+                        print("NOT MATCH")
 
         # Convert the frame to a PhotoImage (compatible with tkinter) and display it
         photo = ImageTk.PhotoImage(image=Image.fromarray(frame))
@@ -350,8 +375,8 @@ class SSystem(ttk.Frame):
                     self.id = self.driver_ids[match_index]
                     cv2.rectangle(face_cam, (left, top), (right, bottom), (0, 255, 0), 2)  # Draw green bbox
 
-                    if self.counter == 0:
-                        text = "Waiting for recognition..."
+                    if self.face_counter == 0:
+                        text = "Waiting for license recognition..."
                         font = cv2.FONT_HERSHEY_SIMPLEX
                         font_scale = 0.5
                         font_color = (255, 255, 255)  # White color
@@ -365,7 +390,8 @@ class SSystem(ttk.Frame):
                         cv2.putText(face_cam, text, (text_x, text_y), font, font_scale, font_color,
                                     line_thickness, cv2.LINE_AA)
                         cv2.waitKey(1)
-                        self.counter = 1
+
+                        self.face_counter = 1
 
                     # Set the face_recognized flag to True when the face is recognized
                     self.face_recognized = True
@@ -395,9 +421,10 @@ class SSystem(ttk.Frame):
 
             if score > threshold:
                 object_detected = True  # Set the flag to True for valid detection
-                cv2.rectangle(self.license_cam, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
+                # cv2.rectangle(self.license_cam, (int(x1), int(y1)), (int(x2), int(y2)), (255, 255, 255), 2)
+                print("lcounter: ", self.license_counter)
 
-                if self.counter == 0:
+                if self.license_counter == 0:
 
                     # Extract the license plate region
                     license_plate_region = license_cam[int(y1):int(y2), int(x1):int(x2)]
@@ -439,16 +466,21 @@ class SSystem(ttk.Frame):
                         vehicle_data = db.child('Vehicles').get().val()
 
                         if extracted_text in vehicle_data:
-                            self.vehicle_info = db.child(f'Vehicles/{extracted_text}').get().val()
+
+                            self.extracted_text = extracted_text
 
                             print(f"License plate {extracted_text} is in the vehicles data.")
                             self.license_recognized = True
                             self.camera_border_color2 = "#00ff00"
                             self.border_style.configure("license_border.TLabel", bordercolor=self.camera_border_color2,
                                                         borderwidth=4)
+                            cv2.rectangle(self.license_cam, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
+
+                            self.license_counter = 1
 
                     except Exception as e:
                         print("Error in license recognition:", e)
+
 
                 # Convert the license_cam image to PhotoImage for display
                 photo = ImageTk.PhotoImage(image=Image.fromarray(self.license_cam))
@@ -529,11 +561,16 @@ class SSystem(ttk.Frame):
         # c.execute("INSERT INTO daily_logs VALUES (?, ?, ?, ?, ?, ?, ?)", logs_data)
         # conn.commit()
         #
-        self.counter = 0
+        self.face_counter = 0
+        self.license_counter = 0
 
         self.driver_info = None
         self.img_driver = None
         self.vehicle_info = None
+
+        self.license_recognized = False
+        self.face_recognized = False
+
 
         # Reset driver's image to default (profile_icon)
         profile_icon_path = "images/Profile_Icon.png"
@@ -546,12 +583,17 @@ class SSystem(ttk.Frame):
         self.id_number.set("")
         self.phone.set("")
         self.plate.set("")
+        self.vehicle_type.set("")
+        self.vehicle_color.set("")
 
         self.driver_image_label.configure(image=self.profile_icon)
         self.driver_image_label.image = self.profile_icon
 
         self.camera_border_color2 = "white"
         self.border_style.configure("face_border.TLabel", bordercolor=self.camera_border_color2,
+                                    borderwidth=4)
+
+        self.border_style.configure("license_border.TLabel", bordercolor=self.camera_border_color2,
                                     borderwidth=4)
 
         self.update_driver_details()
@@ -609,6 +651,14 @@ class SSystem(ttk.Frame):
         )
 
         dt.pack(fill=BOTH, expand=YES, padx=10, pady=10)
+
+    def not_match(self):
+        toplevel = Toplevel(self.master_window)
+
+        okay = Messagebox.ok("Driver and license plate don't match", 'ERROR', False, parent=toplevel)
+
+        self.matched = False
+        self.clock_in()
 
 
 if __name__ == "__main__":
