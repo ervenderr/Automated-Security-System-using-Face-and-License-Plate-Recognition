@@ -169,7 +169,7 @@ class SSystem(ttk.Frame):
         self.border_style = Style(theme="superhero")
 
         # Frame for displaying plate number
-        plate_frame = ttk.Frame(camera_frame, borderwidth=1, relief=RIDGE)
+        plate_frame = ttk.LabelFrame(camera_frame, text='Daily logs', borderwidth=1, relief=RIDGE)
         plate_frame.grid(row=3, column=0, sticky="nsew", pady=20)
         plate_frame.grid_rowconfigure(0, weight=1)
         plate_frame.grid_columnconfigure(0, weight=1)
@@ -213,7 +213,7 @@ class SSystem(ttk.Frame):
 
         self.start_camera_feed(0, self.camera_label1)
         # Start the second camera feed (camera_id=1)
-        self.start_camera_feed(1, self.camera_label2)
+        self.start_camera_feed(2, self.camera_label2)
 
         # Separator line between camera feeds and driver details
         separator = ttk.Separator(container_frame, orient=VERTICAL)
@@ -346,12 +346,13 @@ class SSystem(ttk.Frame):
                     self.face_counter += 1
                     self.license_counter += 1
 
-                    if self.id in self.vehicle_info:
-                        self.update_driver_details()
+                    print("id: ", self.id)
+                    print("vinfo: ", self.vehicle_info)
 
-                    elif not self.matched:
+                    if self.id in self.vehicle_info['drivers'] and self.vehicle_info['drivers'][self.id]:
+                        self.update_driver_details()
+                    else:
                         self.not_match()
-                        self.matched = True
                         print("NOT MATCH")
 
         # Convert the frame to a PhotoImage (compatible with tkinter) and display it
@@ -421,7 +422,7 @@ class SSystem(ttk.Frame):
 
             if score > threshold:
                 object_detected = True  # Set the flag to True for valid detection
-                # cv2.rectangle(self.license_cam, (int(x1), int(y1)), (int(x2), int(y2)), (255, 255, 255), 2)
+                cv2.rectangle(self.license_cam, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
                 print("lcounter: ", self.license_counter)
 
                 if self.license_counter == 0:
@@ -480,7 +481,6 @@ class SSystem(ttk.Frame):
 
                     except Exception as e:
                         print("Error in license recognition:", e)
-
 
                 # Convert the license_cam image to PhotoImage for display
                 photo = ImageTk.PhotoImage(image=Image.fromarray(self.license_cam))
@@ -639,23 +639,22 @@ class SSystem(ttk.Frame):
 
         rowdata = [list(row) for row in self.data_from_db]
 
-        dt = Tableview(
+        table_view = Tableview(
             master=plate_frame,
             coldata=coldata,
             rowdata=rowdata,
             paginated=True,
             searchable=True,
             bootstyle=PRIMARY,
-            stripecolor=(colors.light, None),
+            stripecolor=None,
             autoalign=True,
         )
 
-        dt.pack(fill=BOTH, expand=YES, padx=10, pady=10)
+        table_view.pack(fill=BOTH, expand=YES, padx=10, pady=10)
 
     def not_match(self):
-        toplevel = Toplevel(self.master_window)
 
-        okay = Messagebox.ok("Driver and license plate don't match", 'ERROR', False, parent=toplevel)
+        okay = Messagebox.ok("Driver and license plate don't match", 'ERROR')
 
         self.matched = False
         self.clock_in()
