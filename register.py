@@ -68,15 +68,18 @@ def create_driver(parent_tab):
             phone = driver_info["phone"]
 
             # Find the vehicles associated with this driver
-            associated_vehicles = []
+            associated_vehicle_plate = []
+            associated_vehicle_type = []
+            associated_vehicle_color = []
             for vehicle_id, vehicle_info in vehicles_data.items():
                 if "drivers" in vehicle_info and driver_id in vehicle_info["drivers"]:
-                    vehicle_type = vehicle_info["vehicle_type"]
-                    vehicle_color = vehicle_info["vehicle_color"]
-                    associated_vehicles.append(vehicle_info["plate_number"])
+                    associated_vehicle_plate.append(vehicle_info["plate_number"])
+                    associated_vehicle_type.append(vehicle_info["vehicle_type"])
+                    associated_vehicle_color.append(vehicle_info["vehicle_color"])
 
             # Add the driver's data to the rowdata
-            rowdata.append([driver_name, id_number, ", ".join(associated_vehicles), phone, vehicle_type, vehicle_color,
+            rowdata.append([driver_name, id_number, ", ".join(associated_vehicle_plate), phone,
+                            ", ".join(associated_vehicle_type), ", ".join(associated_vehicle_color),
                             ""])
 
     def save_driver():

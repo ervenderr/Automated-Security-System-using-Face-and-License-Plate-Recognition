@@ -47,7 +47,5 @@ db = firebase.database()
 
 conn = sqlite3.connect('drivers.db')
 c = conn.cursor()
-# c.execute("SELECT * FROM daily_logs")
-print(c.fetchall())
-conn.commit()
+
 

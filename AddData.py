@@ -1,48 +1,27 @@
-import firebase_admin
-from firebase_admin import credentials
-from firebase_admin import db
+import pytesseract
+import cv2
+import os
 
-cred = credentials.Certificate("serviceAccountKey.json")
-firebase_admin.initialize_app(cred, {
-    'databaseURL':"https://wmsusecuritysystem-default-rtdb.firebaseio.com/"
-})
+pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
-ref = db.reference('Drivers')
+img = cv2.imread('cropped_plate.jpg')
 
-data = {
-    '321654':
-        {
-            'name': "Elon Musk",
-            'id_number': 321654,
-            'phone': 9817068891,
-            'plate_number': "ABC 123",
-            'date': "2023-8-8",
-            'time_in': "06:00 AM",
-            'time_out': "05:00 PM",
-        },
+test_license_plate = cv2.imread(os.getcwd() + "/cropped_plate.jpg")
 
-    '852741':
-        {
-            'name': "Some Girl",
-            'id_number': 852741,
-            'phone': 987456123,
-            'plate_number': "EFG 456",
-            'date': "2023-8-8",
-            'time_in': "06:02 AM",
-            'time_out': "05:04 PM",
-        },
+resize_test_license_plate = cv2.resize(
+    test_license_plate, None, fx=2, fy=2,
+    interpolation=cv2.INTER_CUBIC)
 
-    '963852':
-        {
-            'name': "Erven Idjad",
-            'id_number': 963852,
-            'phone': 9817068891,
-            'plate_number': "HIJ 789",
-            'date': "2023-8-8",
-            'time_in': "06:10 AM",
-            'time_out': "05:14 PM",
-        },
-}
+grayscale_resize_test_license_plate = cv2.cvtColor(
+    resize_test_license_plate, cv2.COLOR_BGR2GRAY)
 
-for key,value in data.items():
-    ref.child(key).set(value)
+gaussian_blur_license_plate = cv2.GaussianBlur(
+    grayscale_resize_test_license_plate, (5, 5), 0)
+
+# Corrected configuration options
+config = '--oem 3 -l eng --psm 6 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+new_predicted_result_GWT2180 = pytesseract.image_to_string(gaussian_blur_license_plate, lang='eng', config=config)
+
+# Cleaning up the result
+filter_new_predicted_result_GWT2180 = "".join(new_predicted_result_GWT2180.split()).replace(":", "").replace("-", "")
+print(filter_new_predicted_result_GWT2180)

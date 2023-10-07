@@ -1,5 +1,7 @@
 import pickle
 import threading
+from collections import Counter
+
 # import torch
 import cv2
 from tkinter import *
@@ -9,6 +11,8 @@ import pytz
 import numpy as np
 import easyocr
 import os
+
+from ttkbootstrap.icons import Icon
 from ultralytics import YOLO
 from firebase_admin import db
 from history_logs import *
@@ -23,6 +27,9 @@ from ttkbootstrap.constants import *
 from ttkbootstrap import Style
 from ttkbootstrap.dialogs import Messagebox
 from database import *
+import pytesseract
+
+pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
 reader = easyocr.Reader(['en'], gpu=True)
 # Load the YOLO model
@@ -31,6 +38,7 @@ lpr_model = YOLO(model_path)
 threshold = 0.5
 
 frame_queue = queue.Queue()
+
 
 # port = 'COM6'
 # pin = 10
@@ -42,6 +50,10 @@ frame_queue = queue.Queue()
 class SSystem(ttk.Frame):
     def __init__(self, master_window):
 
+        self.most_common_license = None
+        self.license_frame_counter = 0
+        self.face_frame_counter = 0
+        self.collected_licenses = []
         self.extracted_text = None
         self.vehicle_data = None
         self.matched = False
@@ -51,6 +63,12 @@ class SSystem(ttk.Frame):
         self.cap = None
         self.face_cam = None
         self.data_from_db = None
+
+        self.face_best_frame = None
+        self.face_best_frame_blur = float('inf')
+        self.frame_directory = "Images/frame_images"
+        os.makedirs(self.frame_directory, exist_ok=True)
+
         master_window.attributes('-fullscreen', True)
         master_window.bind('<Escape>', lambda event: master_window.attributes('-fullscreen', False))
 
@@ -211,9 +229,9 @@ class SSystem(ttk.Frame):
         self.camera_label2 = ttk.Label(camera_container, borderwidth=3, relief="solid", style="license_border.TLabel")
         self.camera_label2.pack(side=RIGHT)
 
-        self.start_camera_feed(0, self.camera_label1)
+        self.start_camera_feed(2, self.camera_label1)
         # Start the second camera feed (camera_id=1)
-        self.start_camera_feed(2, self.camera_label2)
+        self.start_camera_feed(0, self.camera_label2)
 
         # Separator line between camera feeds and driver details
         separator = ttk.Separator(container_frame, orient=VERTICAL)
@@ -281,6 +299,21 @@ class SSystem(ttk.Frame):
             self.driver_image_label.configure(image=driver_image)
             self.driver_image_label.image = driver_image  # Keep a reference to avoid garbage collection
 
+        elif self.most_common_license is not None and self.img_driver is not None:
+
+            visitor = f"Visitor_{self.most_common_license}"
+
+            self.driver_name.set(visitor)
+            self.plate.set(self.most_common_license)
+
+            # Display the driver's image
+            driver_image = Image.fromarray(self.img_driver)
+            driver_image = driver_image.resize((250, 250), Image.Resampling.LANCZOS)
+
+            driver_image = ImageTk.PhotoImage(driver_image)
+            self.driver_image_label.configure(image=driver_image)
+            self.driver_image_label.image = driver_image  # Keep a reference to avoid garbage collection
+
     def setup_logs_tab(self, parent_tab):
         history_logs_tab(parent_tab)
 
@@ -299,10 +332,10 @@ class SSystem(ttk.Frame):
 
         if ret:
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  # Convert BGR to RGB
-              # Resize frame for display
+            # Resize frame for display
 
             # Perform face recognition on the second camera feed (camera_id=1)
-            if self.face_recognition_enabled and camera_id == 4:
+            if self.face_recognition_enabled and camera_id == 2:
                 face_cam = frame
                 face_photo = ImageTk.PhotoImage(image=Image.fromarray(face_cam))
                 camera_label.configure(image=face_photo, borderwidth=1, relief="solid")
@@ -321,7 +354,7 @@ class SSystem(ttk.Frame):
                 except Exception as e:
                     print("Error in face recognition:", e)
 
-            if self.license_recognition_enabled and camera_id == 4:
+            if self.license_recognition_enabled and camera_id == 0:
                 self.license_cam = frame
 
                 self.start_computation_thread()
@@ -355,6 +388,18 @@ class SSystem(ttk.Frame):
                         self.not_match()
                         print("NOT MATCH")
 
+                elif ((self.face_counter and self.license_counter) == 1
+                      and not (self.license_recognized and self.face_recognized)):
+
+                    self.face_recognition_enabled = False
+                    self.license_recognition_enabled = False
+
+                    unregistered_profile = Image.open("Images/frame_images/best_frame.jpg")
+                    self.img_driver = np.array(unregistered_profile)
+
+                    self.update_driver_details()
+                    print("License not registered")
+
         # Convert the frame to a PhotoImage (compatible with tkinter) and display it
         photo = ImageTk.PhotoImage(image=Image.fromarray(frame))
         camera_label.configure(image=photo)
@@ -372,7 +417,7 @@ class SSystem(ttk.Frame):
                 face_dis = face_recognition.face_distance(self.encode_list_known, encode_face)
 
                 match_index = np.argmin(face_dis)
-                if matches[match_index]:
+                if matches[match_index] and self.face_frame_counter <= 5:
                     self.id = self.driver_ids[match_index]
                     cv2.rectangle(face_cam, (left, top), (right, bottom), (0, 255, 0), 2)  # Draw green bbox
 
@@ -402,17 +447,43 @@ class SSystem(ttk.Frame):
 
                 else:
                     cv2.rectangle(face_cam, (left, top), (right, bottom), (255, 0, 0), 3)  # Draw red bbox
-                    self.camera_border_color2 = "#ff0000"
-                    self.border_style.configure("face_border.TLabel", bordercolor=self.camera_border_color2,
-                                                borderwidth=4)
+
+                    current_frame = face_cam.copy()
+
+                    # Calculate blur level (you can use different methods)
+                    blur = cv2.Laplacian(current_frame, cv2.CV_64F).var()
+
+                    # Check if the current frame is less blurred than the best frame
+                    if blur < self.face_best_frame_blur and self.face_frame_counter == 6:
+                        self.face_best_frame_blur = blur
+                        self.face_best_frame = current_frame
+
+                        self.save_best_frame()
+
+                        self.face_recognized = False
+                        self.face_counter = 1
+
+                        self.camera_border_color2 = "#ff0000"
+                        self.border_style.configure("face_border.TLabel", bordercolor=self.camera_border_color2,
+                                                    borderwidth=4)
+
+                    self.face_frame_counter += 1
+
                     print("Unauthorized")
+                    print("face_counter: ", self.face_frame_counter)
+
+    def save_best_frame(self):
+        if self.face_best_frame is not None:
+            frame_rgb = cv2.cvtColor(self.face_best_frame, cv2.COLOR_BGR2RGB)
+            frame_filename = os.path.join(self.frame_directory, "best_frame.jpg")
+            cv2.imwrite(frame_filename, frame_rgb)
 
     def start_computation_thread(self):
         computation_thread = threading.Thread(target=self.run_model_computation, args=(self.license_cam,))
         computation_thread.start()
 
     def run_model_computation(self, license_cam):
-        print("")
+        # print("")
         results = lpr_model(license_cam)[0]
 
         object_detected = False  # Flag to track if any object was detected in the frame
@@ -425,41 +496,29 @@ class SSystem(ttk.Frame):
                 cv2.rectangle(self.license_cam, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
                 print("lcounter: ", self.license_counter)
 
-                if self.license_counter == 0:
-
+                if self.license_counter == 0 and self.license_frame_counter <= 5:
                     # Extract the license plate region
                     license_plate_region = license_cam[int(y1):int(y2), int(x1):int(x2)]
 
-                    # Preprocess the license plate region for better OCR accuracy
-                    gray_plate = cv2.cvtColor(license_plate_region, cv2.COLOR_BGR2GRAY)
-
-                    # Apply histogram equalization to enhance contrast
-                    enhanced_plate = cv2.equalizeHist(gray_plate)
-
-                    # Apply median filtering for noise reduction
-                    denoised_plate = cv2.medianBlur(enhanced_plate, 3)
-
-                    blurred_plate = cv2.GaussianBlur(denoised_plate, (5, 5), 0)
-                    threshold_plate = cv2.adaptiveThreshold(blurred_plate, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-                                                            cv2.THRESH_BINARY_INV, 11, 2)
-
-                    # Convert BGR to RGB for EasyOCR
-                    license_plate_rgb = cv2.cvtColor(threshold_plate, cv2.COLOR_GRAY2RGB)
-
                     try:
-                        # Perform OCR on the license plate region using EasyOCR
-                        ocr_results = reader.readtext(license_plate_rgb)
+                        resize_test_license_plate = cv2.resize(
+                            license_plate_region, None, fx=2, fy=2,
+                            interpolation=cv2.INTER_CUBIC)
 
-                        # Extracted text from EasyOCR
-                        extracted_text = ' '.join([result[1] for result in ocr_results])
+                        grayscale_resize_test_license_plate = cv2.cvtColor(
+                            resize_test_license_plate, cv2.COLOR_BGR2GRAY)
 
-                        # Remove special characters and keep only letters and numbers
-                        extracted_text = re.sub(r'[^a-zA-Z0-9]', '', extracted_text)
+                        gaussian_blur_license_plate = cv2.GaussianBlur(
+                            grayscale_resize_test_license_plate, (5, 5), 0)
 
-                        # Convert the text to uppercase
-                        extracted_text = extracted_text.upper()
+                        config = '--oem 3 -l eng --psm 6 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+                        ocr_result = pytesseract.image_to_string(gaussian_blur_license_plate, lang='eng',
+                                                                 config=config)
 
-                        extracted_text = f'{extracted_text[:3]}{extracted_text[3:7]}'
+                        # Cleaning up the result
+                        ocr_result = "".join(ocr_result.split()).replace(":", "").replace("-", "")
+
+                        extracted_text = f'{ocr_result[:3]}{ocr_result[3:7]}'
 
                         # Display the extracted text
                         print("EXTRACTED TEXT: ", extracted_text)
@@ -478,6 +537,39 @@ class SSystem(ttk.Frame):
                             cv2.rectangle(self.license_cam, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
 
                             self.license_counter = 1
+
+                        else:
+                            pattern = r'[A-Z]{3}\d{4}'
+
+                            print("counter: ", self.license_frame_counter)
+
+                            if self.license_frame_counter == 5:
+
+                                pattern = r'[A-Z]{3}\d{4}'
+                                filtered_licenses = []
+
+                                for licenses in self.collected_licenses:
+                                    if re.match(pattern, licenses):
+                                        filtered_licenses.append(licenses)
+
+                                print("Collected licenses:", filtered_licenses)
+
+                                license_counts = Counter(filtered_licenses)
+                                self.most_common_license = license_counts.most_common(1)[0][0]
+
+                                print("Most common license plate:", self.most_common_license)
+
+                                self.camera_border_color2 = "#ff0000"
+                                self.border_style.configure("license_border.TLabel",
+                                                            bordercolor=self.camera_border_color2,
+                                                            borderwidth=4)
+                                self.license_counter = 1
+                                self.license_recognized = False
+
+                            elif re.match(pattern, extracted_text):
+                                self.collected_licenses.append(extracted_text)
+
+                                self.license_frame_counter += 1
 
                     except Exception as e:
                         print("Error in license recognition:", e)
@@ -552,17 +644,17 @@ class SSystem(ttk.Frame):
 
     def clock_in(self):
 
-        # self.plate = "NONE"
-        #
-        # logs_data = (
-        #     self.driver_name.get(), self.id_number.get(), self.phone.get(), self.plate, self.date, self.time_in,
-        #     self.time_out)
-        #
-        # c.execute("INSERT INTO daily_logs VALUES (?, ?, ?, ?, ?, ?, ?)", logs_data)
-        # conn.commit()
-        #
+        self.license_recognition_enabled = False
+        self.face_recognition_enabled = False
         self.face_counter = 0
         self.license_counter = 0
+
+        toast = ToastNotification(
+            title="Success",
+            message="YEHEY SUCCESS",
+            duration=3000,
+        )
+        toast.show_toast()
 
         self.driver_info = None
         self.img_driver = None
@@ -570,7 +662,6 @@ class SSystem(ttk.Frame):
 
         self.license_recognized = False
         self.face_recognized = False
-
 
         # Reset driver's image to default (profile_icon)
         profile_icon_path = "images/Profile_Icon.png"
@@ -598,16 +689,33 @@ class SSystem(ttk.Frame):
 
         self.update_driver_details()
 
-        toast = ToastNotification(
-            title="Success",
-            message="YEHEY SUCCESS",
-            duration=3000,
-        )
+        threading.Timer(20, self.reset_counters).start()
 
-        toast.show_toast()
+        print("TIME IS UP!")
+        # self.face_counter = 0
+        # self.license_counter = 0
+        # self.license_frame_counter = 0
+        #
+        # self.license_recognition_enabled = True
+        # self.face_recognition_enabled = True
 
         # for i in range(0, 360):
         #     self.rotateservo(pin, i)
+
+        # self.plate = "NONE"
+        #
+        # logs_data = (
+        #     self.driver_name.get(), self.id_number.get(), self.phone.get(), self.plate, self.date, self.time_in,
+        #     self.time_out)
+        #
+        # c.execute("INSERT INTO daily_logs VALUES (?, ?, ?, ?, ?, ?, ?)", logs_data)
+        # conn.commit()
+        #
+
+    def reset_counters(self):
+        self.license_frame_counter = 0
+        self.license_recognition_enabled = True
+        self.face_recognition_enabled = True
 
     def on_cancel(self):
         if self.cap is not None:
@@ -654,10 +762,53 @@ class SSystem(ttk.Frame):
 
     def not_match(self):
 
-        okay = Messagebox.ok("Driver and license plate don't match", 'ERROR')
-
         self.matched = False
-        self.clock_in()
+        self.license_recognition_enabled = False
+        self.face_recognition_enabled = False
+
+        self.face_counter = 0
+        self.license_counter = 0
+
+        self.driver_info = None
+        self.img_driver = None
+        self.vehicle_info = None
+
+        self.license_recognized = False
+        self.face_recognized = False
+
+        # Reset driver's image to default (profile_icon)
+        profile_icon_path = "images/Profile_Icon.png"
+        profile_icon_image = Image.open(profile_icon_path)
+        profile_icon_image = profile_icon_image.resize((250, 250), Image.Resampling.LANCZOS)
+        self.img_driver = np.array(profile_icon_image)
+
+        # Explicitly reset the GUI elements to their default values
+        self.driver_name.set("")
+        self.id_number.set("")
+        self.phone.set("")
+        self.plate.set("")
+        self.vehicle_type.set("")
+        self.vehicle_color.set("")
+
+        self.driver_image_label.configure(image=self.profile_icon)
+        self.driver_image_label.image = self.profile_icon
+
+        self.camera_border_color2 = "white"
+        self.border_style.configure("face_border.TLabel", bordercolor=self.camera_border_color2,
+                                    borderwidth=4)
+
+        self.border_style.configure("license_border.TLabel", bordercolor=self.camera_border_color2,
+                                    borderwidth=4)
+
+        self.update_driver_details()
+
+        style = Style()
+        style.configure('TMessagebox', font=('Helvetica', 16))
+        okay = Messagebox.ok("Driver and license plate don't match", 'ERROR', icon=Icon.info, style=style)
+
+        if okay is None:
+            print("OK CLICKED")
+            self.reset_counters()
 
 
 if __name__ == "__main__":
