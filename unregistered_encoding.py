@@ -49,4 +49,3 @@ def process_images():
         print(f"An error occurred during encoding: {str(e)}")
 
 
-process_images()

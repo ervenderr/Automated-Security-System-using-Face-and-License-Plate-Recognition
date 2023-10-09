@@ -55,12 +55,29 @@ def fetch_logs():
     return data_logs
 
 
-def insert_logs(name, id_number, plate_number, phone, date, time_in, time_out, time_in_status):
+def insert_logs(name, id_number, plate_number, phone, date, time_in, time_out, time_in_status, is_registered):
     conn = sqlite3.connect('drivers.db')
     c = conn.cursor()
-    c.execute('INSERT INTO daily_logs (name, id_number, plate_number, phone, date, time_in, time_out, time_in_status)'
-              'VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-              (name, id_number, plate_number, phone, date, time_in, time_out, time_in_status))
+    c.execute('INSERT INTO daily_logs (name, id_number, plate_number, phone, date, time_in, time_out, time_in_status,'
+              'is_registered)'
+              'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+              (name, id_number, plate_number, phone, date, time_in, time_out, time_in_status, is_registered))
 
     conn.commit()
     conn.close()
+
+
+
+
+# # Connect to the SQLite database
+# conn = sqlite3.connect('drivers.db')
+# c = conn.cursor()
+#
+# # Delete all rows from the "daily_logs" table
+# c.execute('DELETE FROM daily_logs')
+#
+# # Commit the changes
+# conn.commit()
+#
+# # Close the database connection
+# conn.close()

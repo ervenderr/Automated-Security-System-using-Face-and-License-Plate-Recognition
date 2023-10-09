@@ -112,10 +112,10 @@ class SSystem(ttk.Frame):
         self.vehicle_info = None
 
         # load encoding file
-        self.file = open('Encode_file.p', 'rb')
-        self.encode_with_ids = pickle.load(self.file)
-        self.file.close()
-        self.encode_list_known, self.driver_ids = self.encode_with_ids
+        file = open('Encode_file.p', 'rb')
+        encode_with_ids = pickle.load(file)
+        file.close()
+        self.encode_list_known, self.driver_ids = encode_with_ids
 
         # Create the navigation bar
         self.nav_bar = ttk.Notebook(self)
@@ -163,8 +163,8 @@ class SSystem(ttk.Frame):
 
         # Check if the "Home" tab is selected, enable face recognition
         if current_tab_index == 0:
-            self.face_recognition_enabled = True
-            self.license_recognition_enabled = True
+            self.face_recognition_enabled = False
+            self.license_recognition_enabled = False
         else:
             # Disable face recognition and license plate recognition for other tabs
             self.face_recognition_enabled = False
@@ -303,7 +303,12 @@ class SSystem(ttk.Frame):
             self.driver_image_label.configure(image=driver_image)
             self.driver_image_label.image = driver_image  # Keep a reference to avoid garbage collection
 
-        elif self.most_common_license is not None and self.img_driver is not None:
+            self.face_recognition_enabled = False
+            self.license_recognition_enabled = False
+
+            threading.Timer(3, self.clock_in).start()
+
+        elif self.most_common_license is not None and self.img_driver is not None and self.id_number is None:
 
             visitor = f"Visitor_{self.most_common_license}"
 
@@ -317,6 +322,9 @@ class SSystem(ttk.Frame):
             driver_image = ImageTk.PhotoImage(driver_image)
             self.driver_image_label.configure(image=driver_image)
             self.driver_image_label.image = driver_image  # Keep a reference to avoid garbage collection
+
+            self.face_recognition_enabled = False
+            self.license_recognition_enabled = False
 
     def setup_logs_tab(self, parent_tab):
         history_logs_tab(parent_tab)
@@ -347,6 +355,7 @@ class SSystem(ttk.Frame):
                 try:
                     current_face = face_recognition.face_locations(face_cam)
                     current_encode = face_recognition.face_encodings(face_cam, current_face)
+                    print("ENCODING 1")
 
                     # Multithreading for face recognition
                     face_thread = threading.Thread(
@@ -413,9 +422,10 @@ class SSystem(ttk.Frame):
         camera_label.after(30, self.update_camera, cap, camera_label, camera_id)
 
     def process_face_recognition(self, current_encode, current_face, face_cam, camera_label):
-
+        print("ENCODINGSS")
         with self.face_lock:  # Use the lock to ensure thread safety
             for encode_face, face_location in zip(current_encode, current_face):
+                print("ENCODING")
                 top, right, bottom, left = face_location
                 matches = face_recognition.compare_faces(self.encode_list_known, encode_face)
                 face_dis = face_recognition.face_distance(self.encode_list_known, encode_face)
@@ -515,7 +525,8 @@ class SSystem(ttk.Frame):
                         gaussian_blur_license_plate = cv2.GaussianBlur(
                             grayscale_resize_test_license_plate, (5, 5), 0)
 
-                        config = '--oem 3 -l eng --psm 6 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+                        config = ('--oem 3 -l eng --psm 6 -c '
+                                  'tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789')
                         ocr_result = pytesseract.image_to_string(gaussian_blur_license_plate, lang='eng',
                                                                  config=config)
 
@@ -632,36 +643,38 @@ class SSystem(ttk.Frame):
             bootstyle=DANGER,
             style=btn_style
         )
-        cancel_btn.grid(row=2, column=0, padx=5, pady=(0, 5), sticky="ew")
+        cancel_btn.grid(row=2, column=0, pady=(0, 10), sticky="ew")
 
         submit_btn = ttk.Button(
             master=button_container,
             text="CLOCK IN",
-            command=self.clock_in,
+            command=self.reset,
             bootstyle=SUCCESS,
             style=btn_style
         )
-        submit_btn.grid(row=0, column=0, pady=(5, 5), sticky="ew")
+        submit_btn.grid(row=0, column=0, pady=(0, 10), sticky="ew")
 
         mark_visitor = ttk.Button(
             master=button_container,
             text="MARK AS VISITOR",
-            command=self.marked_visitor,
-            bootstyle=INFO,
+            command=self.clock_in,
+            bootstyle=PRIMARY,
             style=btn_style
         )
-        mark_visitor.grid(row=1, column=0, pady=(5, 5), sticky="ew")
+        mark_visitor.grid(row=1, column=0, pady=(0, 10), sticky="ew")
 
     # def rotateservo(self, pin, angle):
     #     board.digital[pin].write(angle)
     #     sleep(0.015)
 
-    def clock_in(self):
+    def reset(self):
 
         self.license_recognition_enabled = False
         self.face_recognition_enabled = False
         self.face_counter = 0
         self.license_counter = 0
+
+        # self.reset_encodings()
 
         toast = ToastNotification(
             title="Success",
@@ -765,10 +778,10 @@ class SSystem(ttk.Frame):
             rowdata=rowdata,
             paginated=True,
             searchable=True,
-            bootstyle=PRIMARY,
             stripecolor=None,
             autoalign=True,
         )
+
         self.table_view.load_table_data()
 
         self.table_view.pack(fill=BOTH, expand=YES, padx=10, pady=10)
@@ -821,27 +834,43 @@ class SSystem(ttk.Frame):
             print("OK CLICKED")
             self.reset_counters()
 
-    def marked_visitor(self):
+    def clock_in(self):
 
-        if self.most_common_license is not None and self.img_driver is not None:
+        id_number_value = self.id_number.get()
+        phone_value = self.phone.get()
+        driver_name_value = self.driver_name.get()
+        plate_value = self.plate.get()
 
-            driver_name_value = self.driver_name.get()
-            id_number_value = self.id_number.get()
-            plate_value = self.plate.get()
-            phone_value = self.phone.get()
+        if self.most_common_license is not None and self.img_driver is not None and self.id_number is None:
+
+            id_number_value = None
+            phone_value = None
+            time_in_status = 0
+            is_registered = 1
 
             database.insert_logs(driver_name_value, id_number_value, plate_value, phone_value, self.date, self.time_in,
-                                 None, 'True')
+                                 None, time_in_status, is_registered)
 
             self.table_view.insert_row(index=0,
                                        values=[driver_name_value, self.id_number, plate_value, self.phone, self.date,
-                                               self.time_in, None, 'True'])
+                                               self.time_in, None, time_in_status, is_registered])
 
             filename = f"Images/unregistered driver/{self.most_common_license}.jpg"
             pyre_storage.child(filename).put(self.img_driver)
 
+        elif self.driver_info is not None and self.img_driver is not None and self.vehicle_info is not None:
+
+            time_in_status = 0
+            is_registered = 0
+
+            database.insert_logs(driver_name_value, id_number_value, plate_value, phone_value, self.date, self.time_in,
+                                 None, time_in_status, is_registered)
+
+            self.table_view.insert_row(index=0,
+                                       values=[driver_name_value, id_number_value, plate_value, phone_value, self.date,
+                                               self.time_in, None, time_in_status, is_registered])
+
             self.table_view.load_table_data()
-            self.clock_in()
             print("Inserted")
 
         else:
@@ -851,7 +880,17 @@ class SSystem(ttk.Frame):
 
             if okay is None:
                 print("OK CLICKED")
-                self.reset_counters()
+
+        self.table_view.load_table_data()
+        self.reset()
+        print("Inserted")
+
+    def reset_encodings(self):
+        # load encoding file
+        file = open('unregistered_driver.p', 'rb')
+        encode_with_ids = pickle.load(file)
+        file.close()
+        self.encode_list_known, self.driver_ids = encode_with_ids
 
 
 if __name__ == "__main__":
