@@ -1,5 +1,5 @@
 import cv2
-import face_recog
+import face_recognition
 import pickle
 import os
 from PIL import Image, ImageTk
@@ -43,7 +43,7 @@ encode_list_known = find_encodings(img_list)
 encode_with_ids = [encode_list_known, driver_ids]
 print("complete")
 
-file = open("Encode_file.p", 'wb')
+file = open("registered_encode_file.p", 'wb')
 pickle.dump(encode_with_ids, file)
 file.close()
 print("file saved")

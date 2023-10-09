@@ -15,6 +15,8 @@ import os
 from ttkbootstrap.icons import Icon
 from ultralytics import YOLO
 from firebase_admin import db
+
+import database
 from history_logs import *
 from register import create_driver
 import queue
@@ -28,6 +30,7 @@ from ttkbootstrap import Style
 from ttkbootstrap.dialogs import Messagebox
 from database import *
 import pytesseract
+from unregistered_encoding import process_images
 
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
@@ -50,6 +53,7 @@ frame_queue = queue.Queue()
 class SSystem(ttk.Frame):
     def __init__(self, master_window):
 
+        self.table_view = None
         self.most_common_license = None
         self.license_frame_counter = 0
         self.face_frame_counter = 0
@@ -258,7 +262,7 @@ class SSystem(ttk.Frame):
 
         # Replace profile_icon_label with driver_image_label
         self.driver_image_label = ttk.Label(profile_driver_frame, image=self.profile_icon, justify=CENTER)
-        self.driver_image_label.pack(pady=(10, 30))
+        self.driver_image_label.pack(pady=(10, 10))
 
         instruction_text = "Driver Details: "
         instruction = ttk.Label(profile_driver_frame, text=instruction_text)
@@ -398,7 +402,7 @@ class SSystem(ttk.Frame):
                     self.img_driver = np.array(unregistered_profile)
 
                     self.update_driver_details()
-                    print("License not registered")
+                    print("Not registered")
 
         # Convert the frame to a PhotoImage (compatible with tkinter) and display it
         photo = ImageTk.PhotoImage(image=Image.fromarray(frame))
@@ -616,27 +620,37 @@ class SSystem(ttk.Frame):
 
     def create_buttonbox(self, container):
         button_container = ttk.Frame(container)
-        button_container.pack(fill=X, expand=YES, pady=(15, 10))
+        button_container.pack(fill=X, expand=YES, pady=(5, 5))
+        button_container.columnconfigure(0, weight=1)
 
         btn_style = ttk.Style().configure('TButton', font=('Helvetica', 13))
 
         cancel_btn = ttk.Button(
             master=button_container,
-            text="Cancel",
+            text="CANCEL",
             command=self.on_cancel,
             bootstyle=DANGER,
             style=btn_style
         )
-        cancel_btn.grid(row=0, column=0, padx=5)
+        cancel_btn.grid(row=2, column=0, padx=5, pady=(0, 5), sticky="ew")
 
         submit_btn = ttk.Button(
             master=button_container,
-            text="Clock In",
+            text="CLOCK IN",
             command=self.clock_in,
             bootstyle=SUCCESS,
             style=btn_style
         )
-        submit_btn.grid(row=0, column=1, padx=5)
+        submit_btn.grid(row=0, column=0, pady=(5, 5), sticky="ew")
+
+        mark_visitor = ttk.Button(
+            master=button_container,
+            text="MARK AS VISITOR",
+            command=self.marked_visitor,
+            bootstyle=INFO,
+            style=btn_style
+        )
+        mark_visitor.grid(row=1, column=0, pady=(5, 5), sticky="ew")
 
     # def rotateservo(self, pin, angle):
     #     board.digital[pin].write(angle)
@@ -714,6 +728,7 @@ class SSystem(ttk.Frame):
 
     def reset_counters(self):
         self.license_frame_counter = 0
+        self.license_frame_counter = 0
         self.license_recognition_enabled = True
         self.face_recognition_enabled = True
 
@@ -742,12 +757,9 @@ class SSystem(ttk.Frame):
             {"text": "Time out", "stretch": False},
         ]
 
-        c.execute("SELECT * FROM daily_logs")
-        self.data_from_db = c.fetchall()
+        rowdata = [list(row) for row in database.fetch_logs()]
 
-        rowdata = [list(row) for row in self.data_from_db]
-
-        table_view = Tableview(
+        self.table_view = Tableview(
             master=plate_frame,
             coldata=coldata,
             rowdata=rowdata,
@@ -757,8 +769,9 @@ class SSystem(ttk.Frame):
             stripecolor=None,
             autoalign=True,
         )
+        self.table_view.load_table_data()
 
-        table_view.pack(fill=BOTH, expand=YES, padx=10, pady=10)
+        self.table_view.pack(fill=BOTH, expand=YES, padx=10, pady=10)
 
     def not_match(self):
 
@@ -802,13 +815,43 @@ class SSystem(ttk.Frame):
 
         self.update_driver_details()
 
-        style = Style()
-        style.configure('TMessagebox', font=('Helvetica', 16))
-        okay = Messagebox.ok("Driver and license plate don't match", 'ERROR', icon=Icon.info, style=style)
+        okay = Messagebox.ok("Driver and license plate don't match", 'ERROR', icon=Icon.info)
 
         if okay is None:
             print("OK CLICKED")
             self.reset_counters()
+
+    def marked_visitor(self):
+
+        if self.most_common_license is not None and self.img_driver is not None:
+
+            driver_name_value = self.driver_name.get()
+            id_number_value = self.id_number.get()
+            plate_value = self.plate.get()
+            phone_value = self.phone.get()
+
+            database.insert_logs(driver_name_value, id_number_value, plate_value, phone_value, self.date, self.time_in,
+                                 None, 'True')
+
+            self.table_view.insert_row(index=0,
+                                       values=[driver_name_value, self.id_number, plate_value, self.phone, self.date,
+                                               self.time_in, None, 'True'])
+
+            filename = f"Images/unregistered driver/{self.most_common_license}.jpg"
+            pyre_storage.child(filename).put(self.img_driver)
+
+            self.table_view.load_table_data()
+            self.clock_in()
+            print("Inserted")
+
+        else:
+            style = Style()
+            style.configure('TMessagebox', font=('Helvetica', 16))
+            okay = Messagebox.ok("NO DATA FOUND", 'ERROR', icon=Icon.error, style=style)
+
+            if okay is None:
+                print("OK CLICKED")
+                self.reset_counters()
 
 
 if __name__ == "__main__":

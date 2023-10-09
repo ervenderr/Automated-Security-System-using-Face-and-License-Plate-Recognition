@@ -9,21 +9,21 @@ firebase_admin.initialize_app(cred, {
     'storageBucket': "wmsusecuritysystem.appspot.com",
 })
 
-
 firebaseConfig = {
-  "apiKey": "AIzaSyACVRQD5XtQO75PbK0zgPHMpOIZK8AuYAI",
-  "authDomain": "wmsusecuritysystem.firebaseapp.com",
-  "databaseURL": "https://wmsusecuritysystem-default-rtdb.firebaseio.com",
-  "projectId": "wmsusecuritysystem",
-  "storageBucket": "wmsusecuritysystem.appspot.com",
-  "messagingSenderId": "921680387635",
-  "appId": "1:921680387635:web:c60c3daf091597e4d54d46",
-  "measurementId": "G-DWPB6BJQZC"}
+    "apiKey": "AIzaSyACVRQD5XtQO75PbK0zgPHMpOIZK8AuYAI",
+    "authDomain": "wmsusecuritysystem.firebaseapp.com",
+    "databaseURL": "https://wmsusecuritysystem-default-rtdb.firebaseio.com",
+    "projectId": "wmsusecuritysystem",
+    "storageBucket": "wmsusecuritysystem.appspot.com",
+    "messagingSenderId": "921680387635",
+    "appId": "1:921680387635:web:c60c3daf091597e4d54d46",
+    "measurementId": "G-DWPB6BJQZC"}
 
 firebase = pyrebase.initialize_app(firebaseConfig)
 
 pyre_storage = firebase.storage()
 db = firebase.database()
+
 
 # plate = "NBC1234"
 # ids = '01853'
@@ -45,7 +45,22 @@ db = firebase.database()
 # else:
 #     print(f"No plate number found for id_number {ids}")
 
-conn = sqlite3.connect('drivers.db')
-c = conn.cursor()
+
+def fetch_logs():
+    conn = sqlite3.connect('drivers.db')
+    c = conn.cursor()
+    c.execute('SELECT name, id_number, plate_number, phone, date, time_in, time_out FROM daily_logs ORDER BY date DESC')
+    data_logs = c.fetchall()
+    conn.close()
+    return data_logs
 
 
+def insert_logs(name, id_number, plate_number, phone, date, time_in, time_out, time_in_status):
+    conn = sqlite3.connect('drivers.db')
+    c = conn.cursor()
+    c.execute('INSERT INTO daily_logs (name, id_number, plate_number, phone, date, time_in, time_out, time_in_status)'
+              'VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+              (name, id_number, plate_number, phone, date, time_in, time_out, time_in_status))
+
+    conn.commit()
+    conn.close()
