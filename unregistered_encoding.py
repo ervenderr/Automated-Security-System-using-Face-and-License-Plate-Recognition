@@ -1,5 +1,5 @@
 import cv2
-import face_recognition
+import face_recognition_process
 import pickle
 import os
 
