@@ -1,4 +1,6 @@
 # database.py
+import datetime
+
 import pyrebase
 import firebase_admin
 from firebase_admin import credentials, storage
@@ -49,10 +51,27 @@ db = firebase.database()
 def fetch_logs():
     conn = sqlite3.connect('drivers.db')
     c = conn.cursor()
-    c.execute('SELECT name, id_number, plate_number, phone, date, time_in, time_out FROM daily_logs ORDER BY date DESC')
+    today = datetime.datetime.now().date()
+    c.execute('SELECT name, id_number, plate_number, phone, date, time_in, time_out FROM daily_logs '
+              'WHERE date=? '
+              'ORDER BY date DESC', (str(today),))
     data_logs = c.fetchall()
     conn.close()
     return data_logs
+
+
+def check_extracted_text_for_today(extracted_text):
+    conn = sqlite3.connect('drivers.db')
+    c = conn.cursor()
+
+    today = datetime.datetime.now().date()
+    c.execute('SELECT * FROM daily_logs WHERE plate_number=? AND is_registered=?',
+              (extracted_text, 1))
+
+    result = c.fetchone()
+    conn.close()
+
+    return result is not None
 
 
 def insert_logs(name, id_number, plate_number, phone, date, time_in, time_out, time_in_status, is_registered):
@@ -65,6 +84,7 @@ def insert_logs(name, id_number, plate_number, phone, date, time_in, time_out, t
 
     conn.commit()
     conn.close()
+
 
 
 

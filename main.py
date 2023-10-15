@@ -10,11 +10,11 @@ from tkinter import *
 import face_recognition
 from ttkbootstrap.scrolled import ScrolledFrame
 
-import face_recognition_process
+# import face_recognition_process
 import datetime
 import pytz
 import numpy as np
-import easyocr
+# import easyocr
 import os
 from ttkbootstrap.icons import Icon
 from ultralytics import YOLO
@@ -33,11 +33,11 @@ from ttkbootstrap import Style
 from ttkbootstrap.dialogs import Messagebox
 from database import *
 import pytesseract
-# from unregistered_encoding import process_images
+from unregistered_encoding import process_images
 
-pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+pytesseract.pytesseract.tesseract_cmd = r'G:\Program Files\Tesseract-OCR\tesseract.exe'
 
-reader = easyocr.Reader(['en'], gpu=True)
+# reader = easyocr.Reader(['en'], gpu=True)
 # Load the YOLO model
 model_path = os.path.join('.', 'runs', 'detect', 'train', 'weights', 'last.pt')
 lpr_model = YOLO(model_path)
@@ -102,6 +102,7 @@ class SSystem(ttk.Frame):
         self.camera_id1 = 2
         self.camera_id2 = 1
 
+        self.visitor = None
         self.driver_name = ttk.StringVar(value="")
         self.id_number = ttk.StringVar(value="")
         self.phone = ttk.StringVar(value="")
@@ -124,10 +125,16 @@ class SSystem(ttk.Frame):
         self.vehicle_info = None
 
         # load encoding file
-        file = open('Encode_file.p', 'rb')
+        file = open('registered_encode_file.p', 'rb')
         encode_with_ids = pickle.load(file)
         file.close()
         self.encode_list_known, self.driver_ids = encode_with_ids
+
+        # load encoding file
+        un_file = open('registered_encode_file.p', 'rb')
+        un_encode_with_ids = pickle.load(un_file)
+        un_file.close()
+        self.un_encode_list_known, self.un_driver_ids = un_encode_with_ids
 
         # Create the navigation bar
         self.nav_bar = ttk.Notebook(self)
@@ -190,25 +197,17 @@ class SSystem(ttk.Frame):
 
         # Check if the "Home" tab is selected, enable face recognition
         if current_tab_index == 0:
-            self.face_recognition_enabled = False
-            self.license_recognition_enabled = False
-
-            self.face_recognition_enabled_exit = False
-            self.license_recognition_enabled_exit = False
+            self.face_recognition_enabled = True
+            self.license_recognition_enabled = True
 
         elif current_tab_index == 1:
-            self.face_recognition_enabled = False
-            self.license_recognition_enabled = False
-
-            self.face_recognition_enabled_exit = False
-            self.license_recognition_enabled_exit = False
+            self.face_recognition_enabled = True
+            self.license_recognition_enabled = True
 
         else:
             # Disable face recognition and license plate recognition for other tabs
             self.face_recognition_enabled = False
             self.license_recognition_enabled = False
-            self.face_recognition_enabled_exit = False
-            self.license_recognition_enabled_exit = False
 
     def setup_home_tab(self, scrolled_frame):
         # Container frame for camera feeds and driver details
@@ -277,8 +276,8 @@ class SSystem(ttk.Frame):
         self.camera_label2 = ttk.Label(camera_container, borderwidth=3, relief="solid", style="license_border.TLabel")
         self.camera_label2.pack(side=RIGHT)
 
-        # self.start_camera_feed(2, self.camera_label1)
-        # self.start_camera_feed(0, self.camera_label2)
+        self.start_camera_feed(0, self.camera_label1)
+        self.start_camera_feed(1, self.camera_label2)
 
         # Separator line between camera feeds and driver details
         separator = ttk.Separator(container_frame, orient=VERTICAL)
@@ -321,113 +320,114 @@ class SSystem(ttk.Frame):
         self.create_buttonbox(profile_driver_frame)
 
     def setup_exit_tab(self, scrolled_exit_frame):
-        # Container frame for camera feeds and driver details
-        container_frame = ttk.Frame(scrolled_exit_frame)
-        container_frame.grid(row=0, column=0, columnspan=5, sticky="nsew")
-        scrolled_exit_frame.grid_rowconfigure(0, weight=1)
-        scrolled_exit_frame.grid_columnconfigure(0, weight=1)
-
-        # Frame for the cameras
-        camera_frame = ttk.Frame(container_frame)
-        camera_frame.grid(row=0, column=3, sticky="nsew", padx=20, pady=10)
-        camera_frame.grid_rowconfigure(0, weight=1)
-        camera_frame.grid_columnconfigure(1, weight=1)  # Allow the center column to expand
-
-        # Frame for time and date
-        time_date_frame = ttk.Frame(camera_frame)
-        time_date_frame.grid(row=1, column=0, sticky="nsew", pady=10)
-        time_date_frame.grid_rowconfigure(0, weight=1)
-        time_date_frame.grid_columnconfigure(0, weight=1)
-        self.border_style = Style(theme="superhero")
-
-        # Frame for displaying plate number
-        plate_frame = ttk.LabelFrame(camera_frame, text='Daily logs', borderwidth=1, relief=RIDGE)
-        plate_frame.grid(row=3, column=0, sticky="nsew", pady=10)
-        plate_frame.grid_rowconfigure(0, weight=1)
-        plate_frame.grid_columnconfigure(0, weight=1)
-
-        # Panedwindow to split the two camera feeds horizontally
-        camera_paned_window = ttk.Panedwindow(camera_frame, orient=HORIZONTAL)
-        camera_paned_window.grid(row=2, column=0, sticky="nsew", pady=10)
-        camera_paned_window.grid_rowconfigure(0, weight=1)
-        camera_paned_window.grid_columnconfigure(0, weight=1)
-
-        # Single frame for both camera feeds side by side
-        camera_container = ttk.Frame(camera_paned_window)
-        camera_paned_window.add(camera_container)
-
-        # Label to display the time and date
-        time_date_label = ttk.Label(time_date_frame, text="",font=("Arial", 20, "bold"), anchor='center')
-
-        # Center the label within the time_date_frame
-        time_date_label.grid(row=0, column=0, sticky="nsew")
-
-        entrans_label = ttk.Label(time_date_frame, text="EXIT", font=("Helvetica", 30, "bold"), anchor='center')
-
-        # Center the label within the time_date_frame
-        entrans_label.grid(row=1, column=0, sticky="nsew")
-
-        # Start updating the time and date label
-        self.update_time_date(time_date_label)
-
-        self.daily_logs(plate_frame)
-
-        self.camera_border_color1 = 'white'
-        self.camera_border_color2 = 'white'
-
-        self.border_style.configure("face_border.TLabel", bordercolor=self.camera_border_color1)
-        self.border_style.configure("license_border.TLabel", bordercolor=self.camera_border_color2)
-
-        # Label to display the first camera feed
-        self.camera_label1 = ttk.Label(camera_container, borderwidth=3, relief="solid", style="face_border.TLabel")
-        self.camera_label1.pack(side=LEFT, padx=(0, 10))
-
-        # Label to display the second camera feed
-        self.camera_label2 = ttk.Label(camera_container, borderwidth=3, relief="solid", style="license_border.TLabel")
-        self.camera_label2.pack(side=RIGHT)
-
-        self.start_camera_feed(2, self.camera_label1)
-        self.start_camera_feed(0, self.camera_label2)
-
-        # Separator line between camera feeds and driver details
-        separator = ttk.Separator(container_frame, orient=VERTICAL)
-        separator.grid(row=0, column=4, sticky="nsew", padx=20)
-        separator.grid_rowconfigure(0, weight=1)
-        separator.grid_columnconfigure(0, weight=1)
-
-        # Frame for the profile icon and driver details form
-        profile_driver_frame = ttk.Frame(container_frame)
-        profile_driver_frame.grid(row=0, column=5, sticky="nsew", padx=(0, 15))
-        profile_driver_frame.grid_rowconfigure(0, weight=1)
-
-        container_frame.grid_columnconfigure(5, weight=1)
-
-        # Create a container for profile icon and driver's image
-        image_container = ttk.Frame(profile_driver_frame)
-        image_container.pack(pady=5)
-
-        # Profile icon label
-        profile_icon_path = "images/Profile_Icon.png"  # Replace with the path to your profile icon image
-        profile_icon_image = Image.open(profile_icon_path)
-        profile_icon_image = profile_icon_image.resize((250, 250), Image.Resampling.LANCZOS)
-        self.profile_icon_exit = ImageTk.PhotoImage(profile_icon_image)
-
-        # Replace profile_icon_label with driver_image_label
-        self.driver_image_label = ttk.Label(profile_driver_frame, image=self.profile_icon, justify=CENTER)
-        self.driver_image_label.pack(pady=(5, 5))
-
-        instruction_text = "Driver Details: "
-        instruction = ttk.Label(profile_driver_frame, text=instruction_text)
-        instruction.pack(fill=X, pady=5)
-
-        form_entry_labels = ["Name: ", "ID number: ", "Plate number: ", "Phone: ", "Vehicle type: ", "Vehicle color: "]
-        form_entry_vars = [self.driver_name, self.id_number, self.plate, self.phone, self.vehicle_type,
-                           self.vehicle_color]
-
-        for i, (label, var) in enumerate(zip(form_entry_labels, form_entry_vars)):
-            self.create_form_entry(profile_driver_frame, label, var)
-
-        self.create_buttonbox(profile_driver_frame)
+        pass
+    #     # Container frame for camera feeds and driver details
+    #     container_frame = ttk.Frame(scrolled_exit_frame)
+    #     container_frame.grid(row=0, column=0, columnspan=5, sticky="nsew")
+    #     scrolled_exit_frame.grid_rowconfigure(0, weight=1)
+    #     scrolled_exit_frame.grid_columnconfigure(0, weight=1)
+    #
+    #     # Frame for the cameras
+    #     camera_frame = ttk.Frame(container_frame)
+    #     camera_frame.grid(row=0, column=3, sticky="nsew", padx=20, pady=10)
+    #     camera_frame.grid_rowconfigure(0, weight=1)
+    #     camera_frame.grid_columnconfigure(1, weight=1)  # Allow the center column to expand
+    #
+    #     # Frame for time and date
+    #     time_date_frame = ttk.Frame(camera_frame)
+    #     time_date_frame.grid(row=1, column=0, sticky="nsew", pady=10)
+    #     time_date_frame.grid_rowconfigure(0, weight=1)
+    #     time_date_frame.grid_columnconfigure(0, weight=1)
+    #     self.border_style = Style(theme="superhero")
+    #
+    #     # Frame for displaying plate number
+    #     plate_frame = ttk.LabelFrame(camera_frame, text='Daily logs', borderwidth=1, relief=RIDGE)
+    #     plate_frame.grid(row=3, column=0, sticky="nsew", pady=10)
+    #     plate_frame.grid_rowconfigure(0, weight=1)
+    #     plate_frame.grid_columnconfigure(0, weight=1)
+    #
+    #     # Panedwindow to split the two camera feeds horizontally
+    #     camera_paned_window = ttk.Panedwindow(camera_frame, orient=HORIZONTAL)
+    #     camera_paned_window.grid(row=2, column=0, sticky="nsew", pady=10)
+    #     camera_paned_window.grid_rowconfigure(0, weight=1)
+    #     camera_paned_window.grid_columnconfigure(0, weight=1)
+    #
+    #     # Single frame for both camera feeds side by side
+    #     camera_container = ttk.Frame(camera_paned_window)
+    #     camera_paned_window.add(camera_container)
+    #
+    #     # Label to display the time and date
+    #     time_date_label = ttk.Label(time_date_frame, text="",font=("Arial", 20, "bold"), anchor='center')
+    #
+    #     # Center the label within the time_date_frame
+    #     time_date_label.grid(row=0, column=0, sticky="nsew")
+    #
+    #     entrans_label = ttk.Label(time_date_frame, text="EXIT", font=("Helvetica", 30, "bold"), anchor='center')
+    #
+    #     # Center the label within the time_date_frame
+    #     entrans_label.grid(row=1, column=0, sticky="nsew")
+    #
+    #     # Start updating the time and date label
+    #     self.update_time_date(time_date_label)
+    #
+    #     self.daily_logs(plate_frame)
+    #
+    #     self.camera_border_color1 = 'white'
+    #     self.camera_border_color2 = 'white'
+    #
+    #     self.border_style.configure("face_border.TLabel", bordercolor=self.camera_border_color1)
+    #     self.border_style.configure("license_border.TLabel", bordercolor=self.camera_border_color2)
+    #
+    #     # Label to display the first camera feed
+    #     self.camera_label1 = ttk.Label(camera_container, borderwidth=3, relief="solid", style="face_border.TLabel")
+    #     self.camera_label1.pack(side=LEFT, padx=(0, 10))
+    #
+    #     # Label to display the second camera feed
+    #     self.camera_label2 = ttk.Label(camera_container, borderwidth=3, relief="solid", style="license_border.TLabel")
+    #     self.camera_label2.pack(side=RIGHT)
+    #
+    #     # self.start_camera_feed(0, self.camera_label1)
+    #     # self.start_camera_feed(1, self.camera_label2)
+    #
+    #     # Separator line between camera feeds and driver details
+    #     separator = ttk.Separator(container_frame, orient=VERTICAL)
+    #     separator.grid(row=0, column=4, sticky="nsew", padx=20)
+    #     separator.grid_rowconfigure(0, weight=1)
+    #     separator.grid_columnconfigure(0, weight=1)
+    #
+    #     # Frame for the profile icon and driver details form
+    #     profile_driver_frame = ttk.Frame(container_frame)
+    #     profile_driver_frame.grid(row=0, column=5, sticky="nsew", padx=(0, 15))
+    #     profile_driver_frame.grid_rowconfigure(0, weight=1)
+    #
+    #     container_frame.grid_columnconfigure(5, weight=1)
+    #
+    #     # Create a container for profile icon and driver's image
+    #     image_container = ttk.Frame(profile_driver_frame)
+    #     image_container.pack(pady=5)
+    #
+    #     # Profile icon label
+    #     profile_icon_path = "images/Profile_Icon.png"  # Replace with the path to your profile icon image
+    #     profile_icon_image = Image.open(profile_icon_path)
+    #     profile_icon_image = profile_icon_image.resize((250, 250), Image.Resampling.LANCZOS)
+    #     self.profile_icon_exit = ImageTk.PhotoImage(profile_icon_image)
+    #
+    #     # Replace profile_icon_label with driver_image_label
+    #     self.driver_image_label = ttk.Label(profile_driver_frame, image=self.profile_icon, justify=CENTER)
+    #     self.driver_image_label.pack(pady=(5, 5))
+    #
+    #     instruction_text = "Driver Details: "
+    #     instruction = ttk.Label(profile_driver_frame, text=instruction_text)
+    #     instruction.pack(fill=X, pady=5)
+    #
+    #     form_entry_labels = ["Name: ", "ID number: ", "Plate number: ", "Phone: ", "Vehicle type: ", "Vehicle color: "]
+    #     form_entry_vars = [self.driver_name, self.id_number, self.plate, self.phone, self.vehicle_type,
+    #                        self.vehicle_color]
+    #
+    #     for i, (label, var) in enumerate(zip(form_entry_labels, form_entry_vars)):
+    #         self.create_form_entry(profile_driver_frame, label, var)
+    #
+    #     self.create_buttonbox(profile_driver_frame)
 
     def update_time_date(self, label):
         ph_tz = pytz.timezone('Asia/Manila')
@@ -460,11 +460,15 @@ class SSystem(ttk.Frame):
 
             threading.Timer(3, self.clock_in).start()
 
-        elif self.most_common_license is not None and self.img_driver is not None and self.id_number is None:
+        elif self.most_common_license is not None and self.img_driver is not None and self.driver_info is None and self.vehicle_info is None:
 
-            visitor = f"Visitor_{self.most_common_license}"
+            print("vinfo: ", self.vehicle_info)
+            print("dinfo: ", self.driver_info)
+            print("idnum: ", self.id_number)
 
-            self.driver_name.set(visitor)
+            self.visitor = f"Visitor_{self.most_common_license}"
+
+            self.driver_name.set(self.visitor)
             self.plate.set(self.most_common_license)
 
             # Display the driver's image
@@ -477,6 +481,28 @@ class SSystem(ttk.Frame):
 
             self.face_recognition_enabled = False
             self.license_recognition_enabled = False
+
+        elif self.driver_info is None and self.img_driver is not None and self.vehicle_info is not None:
+
+            self.plate.set(self.vehicle_info.get("plate_number", ""))
+            self.vehicle_type.set(self.vehicle_info.get("vehicle_type", ""))
+            self.vehicle_color.set(self.vehicle_info.get("vehicle_color", ""))
+
+            plate_value = self.plate.get()
+            self.visitor = f"Visitor_{plate_value}"
+            self.driver_name.set(self.visitor)
+
+            # Display the driver's image
+            driver_image = Image.fromarray(self.img_driver)
+            driver_image = driver_image.resize((250, 250), Image.Resampling.LANCZOS)
+
+            driver_image = ImageTk.PhotoImage(driver_image)
+            self.driver_image_label.configure(image=driver_image)
+            self.driver_image_label.image = driver_image  # Keep a reference to avoid garbage collection
+
+            self.face_recognition_enabled = False
+            self.license_recognition_enabled = False
+
 
     def setup_logs_tab(self, parent_tab):
         history_logs_tab(parent_tab)
@@ -499,13 +525,13 @@ class SSystem(ttk.Frame):
             # Resize frame for display
 
             # Perform face recognition on the second camera feed (camera_id=1)
-            if self.face_recognition_enabled and camera_id == 2:
+            if self.face_recognition_enabled and camera_id == 0:
                 face_cam = frame
                 face_photo = ImageTk.PhotoImage(image=Image.fromarray(face_cam))
                 camera_label.configure(image=face_photo, borderwidth=1, relief="solid")
 
                 try:
-                    current_face = face_recognition.face_locations(face_cam)
+                    current_face = face_recognition.face_locations(face_cam, number_of_times_to_upsample=0, model="cnn")
                     current_encode = face_recognition.face_encodings(face_cam, current_face)
                     print("ENCODING 1")
 
@@ -519,7 +545,7 @@ class SSystem(ttk.Frame):
                 except Exception as e:
                     print("Error in face recognition:", e)
 
-            if self.license_recognition_enabled and camera_id == 0:
+            if self.license_recognition_enabled and camera_id == 1:
                 self.license_cam = frame
 
                 self.start_computation_thread()
@@ -554,7 +580,7 @@ class SSystem(ttk.Frame):
                         print("NOT MATCH")
 
                 elif ((self.face_counter and self.license_counter) == 1
-                      and not (self.license_recognized and self.face_recognized)):
+                      and not self.license_recognized and not self.face_recognized):
 
                     self.face_recognition_enabled = False
                     self.license_recognition_enabled = False
@@ -565,76 +591,26 @@ class SSystem(ttk.Frame):
                     self.update_driver_details()
                     print("Not registered")
 
-        elif ret:
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  # Convert BGR to RGB
-            # Resize frame for display
+                    self.face_counter += 1
+                    self.license_counter += 1
 
-            # Perform face recognition on the second camera feed (camera_id=1)
-            if self.face_recognition_enabled_exit and camera_id == 2:
-                face_cam = frame
-                face_photo = ImageTk.PhotoImage(image=Image.fromarray(face_cam))
-                camera_label.configure(image=face_photo, borderwidth=1, relief="solid")
+                elif ((self.face_counter and self.license_counter) == 1
+                      and self.license_recognized and not self.face_recognized):
 
-                try:
-                    current_face = face_recognition.face_locations(face_cam)
-                    current_encode = face_recognition.face_encodings(face_cam, current_face)
-                    print("ENCODING 2")
-
-                    # Multithreading for face recognition
-                    face_thread = threading.Thread(
-                        target=self.process_face_recognition,
-                        args=(current_encode, current_face, face_cam, camera_label)
-                    )
-                    face_thread.start()
-
-                except Exception as e:
-                    print("Error in face recognition:", e)
-
-            if self.license_recognition_enabled_exit and camera_id == 0:
-                self.license_cam = frame
-
-                self.start_computation_thread()
-
-            if (self.face_counter and self.license_counter) != 0:
-
-                if ((self.face_counter and self.license_counter) == 1 and self.face_recognized and
-                        self.license_recognized):
-
-                    print("id: ", self.id)
-                    print("extracted_text : ", self.extracted_text)
-
-                    self.driver_info = db.child(f'Drivers/{self.id}').get().val()
-                    self.vehicle_info = db.child(f'Vehicles/{self.extracted_text}').get().val()
-                    print(self.driver_info)
-
-                    bucket = storage.bucket()
-                    blob = bucket.blob(f'driver images/{self.id}.png')
-                    array = np.frombuffer(blob.download_as_string(), np.uint8)
-                    self.img_driver = cv2.imdecode(array, cv2.COLOR_BGR2RGB)
+                    self.face_recognition_enabled = False
+                    self.license_recognition_enabled = False
 
                     self.face_counter += 1
                     self.license_counter += 1
 
-                    print("id: ", self.id)
-                    print("vinfo: ", self.vehicle_info)
-
-                    if self.id in self.vehicle_info['drivers'] and self.vehicle_info['drivers'][self.id]:
-                        self.update_driver_details()
-                    else:
-                        self.not_match()
-                        print("NOT MATCH")
-
-                elif ((self.face_counter and self.license_counter) == 1
-                      and not (self.license_recognized and self.face_recognized)):
-
-                    self.face_recognition_enabled_exit = False
-                    self.license_recognition_enabled_exit = False
+                    self.vehicle_info = db.child(f'Vehicles/{self.extracted_text}').get().val()
+                    print(self.vehicle_info)
 
                     unregistered_profile = Image.open("Images/frame_images/best_frame.jpg")
                     self.img_driver = np.array(unregistered_profile)
 
                     self.update_driver_details()
-                    print("Not registered")
+                    print("Face not registered")
 
         # Convert the frame to a PhotoImage (compatible with tkinter) and display it
         photo = ImageTk.PhotoImage(image=Image.fromarray(frame))
@@ -653,8 +629,12 @@ class SSystem(ttk.Frame):
                 matches = face_recognition.compare_faces(self.encode_list_known, encode_face)
                 face_dis = face_recognition.face_distance(self.encode_list_known, encode_face)
 
+                matches_exit = face_recognition.compare_faces(self.un_encode_list_known, encode_face)
+                face_dis_exit = face_recognition.face_distance(self.un_encode_list_known, encode_face)
+
                 match_index = np.argmin(face_dis)
-                if matches[match_index] and self.face_frame_counter <= 5:
+                unmatch_index = np.argmin(face_dis_exit)
+                if matches[match_index]:
                     self.id = self.driver_ids[match_index]
                     cv2.rectangle(face_cam, (left, top), (right, bottom), (0, 255, 0), 2)  # Draw green bbox
 
@@ -683,9 +663,17 @@ class SSystem(ttk.Frame):
                                                 borderwidth=4)
 
                 else:
-                    cv2.rectangle(face_cam, (left, top), (right, bottom), (255, 0, 0), 3)  # Draw red bbox
+
+                    expansion_factor = 10  # You can adjust this value as needed
+                    left_expanded = max(0, left - expansion_factor)
+                    top_expanded = max(0, top - expansion_factor)
+                    right_expanded = min(face_cam.shape[1], right + expansion_factor)
+                    bottom_expanded = min(face_cam.shape[0], bottom + expansion_factor)
 
                     current_frame = face_cam.copy()
+
+                    cv2.rectangle(face_cam, (left_expanded, top_expanded), (right_expanded, bottom_expanded),
+                                  (255, 0, 0), 3)
 
                     # Calculate blur level (you can use different methods)
                     blur = cv2.Laplacian(current_frame, cv2.CV_64F).var()
@@ -762,6 +750,7 @@ class SSystem(ttk.Frame):
                         print("EXTRACTED TEXT: ", extracted_text)
 
                         vehicle_data = db.child('Vehicles').get().val()
+                        result = check_extracted_text_for_today(extracted_text)
 
                         if extracted_text in vehicle_data:
 
@@ -775,6 +764,10 @@ class SSystem(ttk.Frame):
                             cv2.rectangle(self.license_cam, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
 
                             self.license_counter = 1
+
+                        # if result:
+                        #     self.extracted_text = extracted_text
+                        #     print(f"License plate {extracted_text} is in the vehicles data.")
 
                         else:
                             pattern = r'[A-Z]{3}\d{4}'
@@ -897,7 +890,7 @@ class SSystem(ttk.Frame):
         self.face_counter = 0
         self.license_counter = 0
 
-        # self.reset_encodings()
+        self.reset_encodings()
 
         toast = ToastNotification(
             title="Success",
@@ -920,6 +913,8 @@ class SSystem(ttk.Frame):
         self.img_driver = np.array(profile_icon_image)
 
         # Explicitly reset the GUI elements to their default values
+        self.most_common_license = None
+        self.visitor = None
         self.driver_name.set("")
         self.id_number.set("")
         self.phone.set("")
@@ -942,29 +937,11 @@ class SSystem(ttk.Frame):
         threading.Timer(20, self.reset_counters).start()
 
         print("TIME IS UP!")
-        # self.face_counter = 0
-        # self.license_counter = 0
-        # self.license_frame_counter = 0
-        #
-        # self.license_recognition_enabled = True
-        # self.face_recognition_enabled = True
-
-        # for i in range(0, 360):
-        #     self.rotateservo(pin, i)
-
-        # self.plate = "NONE"
-        #
-        # logs_data = (
-        #     self.driver_name.get(), self.id_number.get(), self.phone.get(), self.plate, self.date, self.time_in,
-        #     self.time_out)
-        #
-        # c.execute("INSERT INTO daily_logs VALUES (?, ?, ?, ?, ?, ?, ?)", logs_data)
-        # conn.commit()
-        #
 
     def reset_counters(self):
         self.license_frame_counter = 0
         self.license_frame_counter = 0
+        self.face_frame_counter = 0
         self.license_recognition_enabled = True
         self.face_recognition_enabled = True
 
@@ -1070,7 +1047,9 @@ class SSystem(ttk.Frame):
         driver_name_value = self.driver_name.get()
         plate_value = self.plate.get()
 
-        if self.most_common_license is not None and self.img_driver is not None and self.id_number is None:
+        # not authorized
+        if (self.most_common_license is not None and self.img_driver is not None and self.driver_info is None
+                and self.vehicle_info is None):
 
             id_number_value = None
             phone_value = None
@@ -1081,12 +1060,21 @@ class SSystem(ttk.Frame):
                                  None, time_in_status, is_registered)
 
             self.table_view.insert_row(index=0,
-                                       values=[driver_name_value, self.id_number, plate_value, self.phone, self.date,
+                                       values=[driver_name_value, id_number_value, plate_value, phone_value, self.date,
                                                self.time_in, None, time_in_status, is_registered])
 
-            filename = f"Images/unregistered driver/{self.most_common_license}.jpg"
-            pyre_storage.child(filename).put(self.img_driver)
+            local_directory = "Images/unregistered driver/"
+            os.makedirs(local_directory, exist_ok=True)
 
+            frame_rgb = cv2.cvtColor(self.face_best_frame, cv2.COLOR_BGR2RGB)
+
+            filename = os.path.join(local_directory, self.most_common_license + ".jpg")
+
+            cv2.imwrite(filename, frame_rgb)
+
+            threading.Timer(3, process_images()).start()
+
+        # authorized
         elif self.driver_info is not None and self.img_driver is not None and self.vehicle_info is not None:
 
             time_in_status = 0
@@ -1099,13 +1087,33 @@ class SSystem(ttk.Frame):
                                        values=[driver_name_value, id_number_value, plate_value, phone_value, self.date,
                                                self.time_in, None, time_in_status, is_registered])
 
-            self.table_view.load_table_data()
-            print("Inserted")
+        # not authorized
+        elif self.driver_info is None and self.img_driver is not None and self.vehicle_info is not None:
+            id_number_value = None
+            phone_value = None
+            time_in_status = 0
+            is_registered = 1
+
+            database.insert_logs(driver_name_value, id_number_value, plate_value, phone_value, self.date, self.time_in,
+                                 None, time_in_status, is_registered)
+
+            self.table_view.insert_row(index=0,
+                                       values=[driver_name_value, id_number_value, plate_value, phone_value, self.date,
+                                               self.time_in, None, time_in_status, is_registered])
+
+            local_directory = "Images/unregistered driver/"
+            os.makedirs(local_directory, exist_ok=True)
+
+            frame_rgb = cv2.cvtColor(self.face_best_frame, cv2.COLOR_BGR2RGB)
+
+            filename = os.path.join(local_directory,  plate_value + ".jpg")
+
+            cv2.imwrite(filename, frame_rgb)
+
+            threading.Timer(3, process_images()).start()
 
         else:
-            style = Style()
-            style.configure('TMessagebox', font=('Helvetica', 16))
-            okay = Messagebox.ok("NO DATA FOUND", 'ERROR', icon=Icon.error, style=style)
+            okay = Messagebox.ok("NO DATA FOUND", 'ERROR', icon=Icon.error)
 
             if okay is None:
                 print("OK CLICKED")
