@@ -52,7 +52,7 @@ def fetch_all_logs():
     c = conn.cursor()
     today = datetime.datetime.now().date()
     c.execute('SELECT name, id_number, plate_number, phone, date, time_in, time_out FROM daily_logs '
-              'ORDER BY time(time_in) DESC', (str(today),))
+              'ORDER BY time(time_in) DESC')
     data_logs = c.fetchall()
     conn.close()
     return data_logs
