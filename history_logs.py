@@ -192,7 +192,6 @@ def history_logs(parent_tab):
 
         # Convert color channels from BGR to RGB
         driver_image = Image.merge("RGB", driver_image.split()[::-1])
-
         driver_image = ImageTk.PhotoImage(driver_image)
 
         driver_image_label.image = driver_image
