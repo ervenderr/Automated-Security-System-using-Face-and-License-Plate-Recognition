@@ -47,14 +47,23 @@ db = firebase.database()
 # else:
 #     print(f"No plate number found for id_number {ids}")
 
+def fetch_all_logs():
+    conn = sqlite3.connect('drivers.db')
+    c = conn.cursor()
+    today = datetime.datetime.now().date()
+    c.execute('SELECT name, id_number, plate_number, phone, date, time_in, time_out FROM daily_logs '
+              'ORDER BY time(time_in) DESC', (str(today),))
+    data_logs = c.fetchall()
+    conn.close()
+    return data_logs
 
-def fetch_logs():
+def fetch_daily_logs():
     conn = sqlite3.connect('drivers.db')
     c = conn.cursor()
     today = datetime.datetime.now().date()
     c.execute('SELECT name, id_number, plate_number, phone, date, time_in, time_out FROM daily_logs '
               'WHERE date=? '
-              'ORDER BY date DESC', (str(today),))
+              'ORDER BY time(time_in) DESC', (str(today),))
     data_logs = c.fetchall()
     conn.close()
     return data_logs

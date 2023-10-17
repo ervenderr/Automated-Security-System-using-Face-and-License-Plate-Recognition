@@ -1,26 +1,54 @@
-import tkinter as tk
-from tkinter import ttk
+import pickle
 import threading
-from image_processing import ImageProcessor  # Import other necessary classes and modules
+from collections import Counter
+from tkinter.font import nametofont
 
-class SecuritySystem:
-    def __init__(self, master):
-        self.master = master
-        self.image_processor = ImageProcessor(self)
+# import torch
+import cv2
+from tkinter import *
 
-        # Create GUI elements
-        self.create_widgets()
+import face_recognition
+from ttkbootstrap.scrolled import ScrolledFrame
 
-    def create_widgets(self):
-        # Create and layout GUI elements (labels, buttons, etc.) using tk/ttk
-        pass
+# import face_recognition_process
+import datetime
+import pytz
+import numpy as np
+# import easyocr
+import os
+from ttkbootstrap.icons import Icon
+from ultralytics import YOLO
+from firebase_admin import db
+import database
+from history_logs import *
+from register import create_driver
+import queue
+import re
+# from pyfirmata import Arduino, SERVO, util
+# from time import sleep
+from PIL import Image, ImageTk
+import ttkbootstrap as ttk
+from ttkbootstrap.constants import *
+from ttkbootstrap import Style
+from ttkbootstrap.dialogs import Messagebox
+from database import *
+import pytesseract
+from unregistered_encoding import process_images
 
-    def start_computation_thread(self):
-        computation_thread = threading.Thread(target=self.image_processor.run_model_computation)
-        computation_thread.start()
 
-    # Define other methods for different functionalities (e.g., reset, clock_in, etc.)
+face_best_frame = None
+face_best_frame_blur = float('inf')
+frame_directory = "Images/frame_images"
+os.makedirs(frame_directory, exist_ok=True)
 
-if __name__ == "__main__":
-    app = SecuritySystemApp()
-    app.mainloop()
+
+def save_best_frame():
+    if face_best_frame is not None:
+        frame_rgb = cv2.cvtColor(face_best_frame, cv2.COLOR_BGR2RGB)
+        frame_filename = os.path.join(frame_directory, "best_frame.jpg")
+        cv2.imwrite(frame_filename, frame_rgb)
+
+
+
+
+

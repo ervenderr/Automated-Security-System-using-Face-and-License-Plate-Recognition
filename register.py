@@ -1,3 +1,4 @@
+import base64
 import datetime
 
 import cv2
@@ -8,9 +9,10 @@ from ttkbootstrap.constants import *
 from PIL import Image, ImageTk
 from ttkbootstrap.tableview import Tableview
 from ttkbootstrap import Style
+from ttkbootstrap.toast import ToastNotification
+
 from database import *
 from tkinter import filedialog
-
 
 profile_icon = None
 DEFAULT_PROFILE_ICON_PATH = "images/Profile_Icon.png"
@@ -20,28 +22,48 @@ DEFAULT_BG_PATH = "images/wmsubg.png"
 def create_driver(parent_tab):
     def selectPic():
 
-        current_time = datetime.datetime.now().strftime("%H:%M:%S")
-        date = datetime.date.today().strftime("%Y-%m-%d")
         global img, filename
-        filename = filedialog.askopenfilename(initialdir="/images", title="Select Image",
-                                              filetypes=(("png images", "*.png"), ("jpg images", "*.jpg")))
-        if filename:
-            img = Image.open(filename)
-            img = img.resize((250, 250), Image.Resampling.LANCZOS)
-            img = ImageTk.PhotoImage(img)
-            driver_image_label.image = img
-            driver_image_label.config(image=driver_image_label.image)
-        else:
-            img = None
-            driver_image_label.image = default_profile_icon
-            driver_image_label.config(image=driver_image_label.image)
+
+        # Open a connection to the default camera
+        cap = cv2.VideoCapture(0)
+
+        if not cap.isOpened():
+            print("Cannot open camera")
+            return
+
+        while True:
+            ret, frame = cap.read()
+
+            if not ret:
+                print("Can't receive frame (stream end?). Exiting ...")
+                break
+
+            cv2.imshow('Capture Image', frame)
+
+            # Capture an image when the 'Space' key is pressed
+            if cv2.waitKey(1) & 0xFF == ord(' '):
+                img = frame
+                img = cv2.resize(img, (250, 250), interpolation=cv2.INTER_AREA)
+                filename = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)  # Convert from BGR to RGB for PIL
+                img_pil = Image.fromarray(filename)
+                img_pil_tk = ImageTk.PhotoImage(img_pil)
+                driver_image_label.image = img_pil_tk
+                driver_image_label.config(image=driver_image_label.image)
+                break
+
+            else:
+                img = None
+                driver_image_label.image = default_profile_icon
+                driver_image_label.config(image=driver_image_label.image)
+
+        cap.release()
+        cv2.destroyAllWindows()
 
     def update_time_date(label):
         ph_tz = pytz.timezone('Asia/Manila')
         current_time = datetime.datetime.now(tz=ph_tz).strftime("%a, %Y-%m-%d %I:%M:%S %p")
         label.config(text=current_time)
         parent_tab.after(1000, lambda: update_time_date(label))
-
 
     colors = ttk.Style().colors
 
@@ -83,8 +105,8 @@ def create_driver(parent_tab):
                             ""])
 
     def save_driver():
-        driver_id = id_entry.get()
-        driver_name = name_entry.get()
+        drivers_id = id_entry.get()
+        drivers_name = name_entry.get()
         driver_phone = phone_entry.get()
         driver_plate = plate_entry.get()
         driver_vehicle_type = vehicle_type_entry.get()
@@ -92,11 +114,11 @@ def create_driver(parent_tab):
 
         # Save driver's information
         driver_data = {
-            'name': driver_name,
-            'id_number': int(driver_id),
+            'name': drivers_name,
+            'id_number': int(drivers_id),
             'phone': int(driver_phone),
         }
-        db.child('Drivers').child(driver_id).set(driver_data)
+        db.child('Drivers').child(drivers_id).set(driver_data)
 
         # Check if the vehicle exists in Vehicles node
         vehicle_data = db.child('Vehicles').child(driver_plate).get().val()
@@ -105,22 +127,46 @@ def create_driver(parent_tab):
                 'plate_number': driver_plate,
                 'vehicle_color': driver_vehicle_color,
                 'vehicle_type': driver_vehicle_type,
-                'drivers': {driver_id: True}
+                'drivers': {drivers_id: True}
             }
         else:
-            vehicle_data['drivers'][driver_id] = True
+            vehicle_data['drivers'][drivers_id] = True
         db.child('Vehicles').child(driver_plate).set(vehicle_data)
 
         if driver_data:
-            file = filename
-            cloud_filename = f"driver images/{driver_id}.png"
-            pyre_storage.child(cloud_filename).put(file)
+            # Convert the image to bytes
+            _, buffer = cv2.imencode('.png', img)
+            img_bytes = buffer.tobytes()
 
+            cloud_filename = f"driver images/{drivers_id}.png"
+            pyre_storage.child(cloud_filename).put(img_bytes)
+
+        date = datetime.date.today().strftime("%Y-%m-%d")
+
+        tree_view.insert_row(index=0,
+                             values=[drivers_name, drivers_id, driver_plate, driver_phone, driver_vehicle_color,
+                                     driver_vehicle_type, date])
+
+        tree_view.load_table_data()
+
+        toast = ToastNotification(
+            title="Success",
+            message="YEHEY SUCCESS",
+            duration=3000,
+        )
+        toast.show_toast()
         print("Driver Created")
 
+    def clear():
+        id_entry.delete(0, END)
+        name_entry.delete(0, END)
+        plate_entry.delete(0, END)
+        phone_entry.delete(0, END)
+        vehicle_type_entry.delete(0, END)
+        vehicle_color_entry.delete(0, END)
 
-    def view_driver():
-        pass
+        driver_image_label.image = default_profile_icon
+        driver_image_label.config(image=driver_image_label.image)
 
     def update_driver():
         pass
@@ -205,7 +251,7 @@ def create_driver(parent_tab):
                                 anchor='center')
 
     registered_label_text = ttk.Label(time_date_frame, text="REGISTERED DRIVER AND VEHICLE",
-                                width=50, font=("Arial", 20, "bold"))
+                                      width=50, font=("Arial", 20, "bold"))
 
     # Center the label within the time_date_frame
     time_date_label.grid(row=0, column=0, sticky="nsew")
@@ -226,6 +272,7 @@ def create_driver(parent_tab):
         autoalign=True,
     )
     tree_view.grid(row=1, column=0, rowspan=2, sticky="nsew")
+    tree_view.load_table_data()
 
     # Configure row and column weights for plate_frame
     table_frame.grid_rowconfigure(0, weight=1)
@@ -291,16 +338,12 @@ def create_driver(parent_tab):
     create_button = ttk.Button(crud_frame, text="SAVE", command=save_driver, bootstyle=SUCCESS)
     read_button = ttk.Button(crud_frame, text="SELECT", command=selected_row, bootstyle=PRIMARY)
     update_button = ttk.Button(crud_frame, text="UPDATE", command=update_driver, bootstyle=PRIMARY)
+    clear_button = ttk.Button(crud_frame, text="CLEAR", command=clear, bootstyle=PRIMARY)
     delete_button = ttk.Button(crud_frame, text="DELETE", command=delete_driver, bootstyle=DANGER)
 
     # Pack the buttons
     create_button.pack(side=LEFT, padx=10, pady=10)
     read_button.pack(side=LEFT, padx=10, pady=10)
     update_button.pack(side=LEFT, padx=10, pady=10)
+    clear_button.pack(side=LEFT, padx=10, pady=10)
     delete_button.pack(side=LEFT, padx=10, pady=10)
-
-
-
-
-
-
