@@ -47,11 +47,29 @@ db = firebase.database()
 # else:
 #     print(f"No plate number found for id_number {ids}")
 
+def fetch_driver_vehicle():
+    conn = sqlite3.connect('drivers.db')
+    c = conn.cursor()
+
+    # Define an SQL query to fetch the required data
+    query = '''
+    SELECT Drivers.id_number, Drivers.name, Drivers.phone,
+           Vehicles.plate_number, Vehicles.vehicle_color, Vehicles.vehicle_type
+    FROM Drivers
+    JOIN DriverVehicleAssociation ON Drivers.id = DriverVehicleAssociation.driver_id
+    JOIN Vehicles ON DriverVehicleAssociation.vehicle_id = Vehicles.id
+    '''
+    c.execute(query)
+    data_logs = c.fetchall()
+    conn.close()
+    return data_logs
+
+
 def fetch_all_logs():
     conn = sqlite3.connect('drivers.db')
     c = conn.cursor()
     today = datetime.datetime.now().date()
-    c.execute('SELECT name, id_number, plate_number, phone, date, time_in, time_out FROM daily_logs '
+    c.execute('SELECT name, type, id_number, plate_number, phone, date, time_in FROM daily_logs '
               'ORDER BY time(time_in) DESC')
     data_logs = c.fetchall()
     conn.close()
@@ -61,7 +79,7 @@ def fetch_daily_logs():
     conn = sqlite3.connect('drivers.db')
     c = conn.cursor()
     today = datetime.datetime.now().date()
-    c.execute('SELECT name, id_number, plate_number, phone, date, time_in, time_out FROM daily_logs '
+    c.execute('SELECT name, type, id_number, plate_number, phone, date, time_in FROM daily_logs '
               'WHERE date=? '
               'ORDER BY time(time_in) DESC', (str(today),))
     data_logs = c.fetchall()
@@ -83,13 +101,14 @@ def check_extracted_text_for_today(extracted_text):
     return result is not None
 
 
-def insert_logs(name, id_number, plate_number, phone, date, time_in, time_out, time_in_status, is_registered):
+def insert_logs(name, type, id_number, plate_number, phone, date, time_in, time_out, time_in_status, is_registered):
     conn = sqlite3.connect('drivers.db')
     c = conn.cursor()
-    c.execute('INSERT INTO daily_logs (name, id_number, plate_number, phone, date, time_in, time_out, time_in_status,'
+    c.execute('INSERT INTO daily_logs (name, type, id_number, plate_number, phone, date, time_in, time_out, '
+              'time_in_status,'
               'is_registered)'
-              'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-              (name, id_number, plate_number, phone, date, time_in, time_out, time_in_status, is_registered))
+              'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+              (name, type, id_number, plate_number, phone, date, time_in, time_out, time_in_status, is_registered))
 
     conn.commit()
     conn.close()

@@ -105,6 +105,7 @@ class SSystem(ttk.Frame):
 
         self.visitor = None
         self.driver_name = ttk.StringVar(value="")
+        self.type = ttk.StringVar(value="")
         self.id_number = ttk.StringVar(value="")
         self.phone = ttk.StringVar(value="")
         self.plate = ttk.StringVar(value="")
@@ -177,10 +178,15 @@ class SSystem(ttk.Frame):
         self.nav_bar.add(registration_tab, text="DRIVERS")
         self.tab_frames.append(registration_tab)
 
+        scrolled_frame_regis = ScrolledFrame(registration_tab, width=1400, height=700, autohide=True, bootstyle='dark round')
+        scrolled_frame_regis.pack(fill=BOTH, expand=True)
+        scrolled_frame_regis.rowconfigure(0, weight=1)
+        scrolled_frame_regis.columnconfigure(0, weight=1)
+
         self.setup_home_tab(scrolled_frame)
         self.setup_exit_tab(scrolled_exit_frame)
         self.setup_logs_tab(logs_tab)
-        self.setup_register_tab(registration_tab)
+        self.setup_register_tab(scrolled_frame_regis)
 
         self.face_recognized = False
         self.license_recognized = False
@@ -199,8 +205,8 @@ class SSystem(ttk.Frame):
 
         # Check if the "Home" tab is selected, enable face recognition
         if current_tab_index == 0:
-            self.face_recognition_enabled = False
-            self.license_recognition_enabled = False
+            self.face_recognition_enabled = True
+            self.license_recognition_enabled = True
 
         elif current_tab_index == 1:
             self.face_recognition_enabled = False
@@ -278,8 +284,8 @@ class SSystem(ttk.Frame):
         self.camera_label2 = ttk.Label(camera_container, borderwidth=3, relief="solid", style="license_border.TLabel")
         self.camera_label2.pack(side=RIGHT)
 
-        self.start_camera_feed(2, self.camera_label1)
-        self.start_camera_feed(1, self.camera_label2)
+        self.start_camera_feed(1, self.camera_label1)
+        self.start_camera_feed(0, self.camera_label2)
 
         # Separator line between camera feeds and driver details
         separator = ttk.Separator(container_frame, orient=VERTICAL)
@@ -312,8 +318,8 @@ class SSystem(ttk.Frame):
         instruction = ttk.Label(profile_driver_frame, text=instruction_text)
         instruction.pack(fill=X, pady=5)
 
-        form_entry_labels = ["Name: ", "ID number: ", "Phone: ", "Plate number: ", "Vehicle type: ", "Vehicle color: "]
-        form_entry_vars = [self.driver_name, self.id_number, self.phone, self.plate, self.vehicle_type,
+        form_entry_labels = ["Name: ", "Type: ", "ID number: ", "Phone: ", "Plate number: ", "Vehicle type: ", "Vehicle color: "]
+        form_entry_vars = [self.driver_name, self.type, self.id_number, self.phone, self.plate, self.vehicle_type,
                            self.vehicle_color]
 
         for i, (label, var) in enumerate(zip(form_entry_labels, form_entry_vars)):
@@ -422,8 +428,9 @@ class SSystem(ttk.Frame):
         # instruction = ttk.Label(profile_driver_frame, text=instruction_text)
         # instruction.pack(fill=X, pady=5)
         #
-        # form_entry_labels = ["Name: ", "ID number: ", "Plate number: ", "Phone: ", "Vehicle type: ", "Vehicle color: "]
-        # form_entry_vars = [self.driver_name, self.id_number, self.plate, self.phone, self.vehicle_type,
+        # form_entry_labels = ["Name: ", "Type: ", "ID number: ", "Phone: ", "Plate number: ", "Vehicle type: ",
+        #                      "Vehicle color: "]
+        # form_entry_vars = [self.driver_name, self.type, self.id_number, self.phone, self.plate, self.vehicle_type,
         #                    self.vehicle_color]
         #
         # for i, (label, var) in enumerate(zip(form_entry_labels, form_entry_vars)):
@@ -440,6 +447,7 @@ class SSystem(ttk.Frame):
     def update_driver_details(self):
         if self.driver_info is not None and self.img_driver is not None and self.vehicle_info is not None:
             self.driver_name.set(self.driver_info.get("name", ""))
+            self.type.set(self.driver_info.get("type", ""))
             self.id_number.set(self.driver_info.get("id_number", ""))
             self.phone.set(self.driver_info.get("phone", ""))
             self.plate.set(self.vehicle_info.get("plate_number", ""))
@@ -473,6 +481,7 @@ class SSystem(ttk.Frame):
             self.visitor = f"Visitor_{self.most_common_license}"
 
             self.driver_name.set(self.visitor)
+            self.type.set('Visitor')
             self.plate.set(self.most_common_license)
 
             # Display the driver's image
@@ -496,6 +505,7 @@ class SSystem(ttk.Frame):
             plate_value = self.plate.get()
             self.visitor = f"Visitor_{plate_value}"
             self.driver_name.set(self.visitor)
+            self.type.set('Visitor')
 
             # Display the driver's image
             driver_image = Image.fromarray(self.img_driver)
@@ -514,6 +524,7 @@ class SSystem(ttk.Frame):
             self.states = 'focus'
 
             self.driver_name.set(self.driver_info.get("name", ""))
+            self.type.set(self.driver_info.get("type", ""))
             self.id_number.set(self.driver_info.get("id_number", ""))
             self.phone.set(self.driver_info.get("phone", ""))
             self.plate.set(self.most_common_license)
@@ -535,8 +546,13 @@ class SSystem(ttk.Frame):
     def setup_logs_tab(self, parent_tab):
         history_logs(parent_tab)
 
-    def setup_register_tab(self, parent_tab):
-        create_driver(parent_tab)
+    def setup_register_tab(self, scrolled_frame_regis):
+        container_frame = ttk.Frame(scrolled_frame_regis)
+        container_frame.grid(row=0, column=0, sticky="nsew")
+        scrolled_frame_regis.grid_rowconfigure(0, weight=1)
+        scrolled_frame_regis.grid_columnconfigure(0, weight=1)
+
+        create_driver(container_frame)
 
     def start_camera_feed(self, camera_id, camera_label):
         # Open the camera with the specified camera_id
@@ -554,7 +570,7 @@ class SSystem(ttk.Frame):
             # Resize frame for display
 
             # Perform face recognition on the second camera feed (camera_id=1)
-            if self.face_recognition_enabled and camera_id == 2:
+            if self.face_recognition_enabled and camera_id == 1:
                 face_cam = frame
                 face_photo = ImageTk.PhotoImage(image=Image.fromarray(face_cam))
                 camera_label.configure(image=face_photo, borderwidth=1, relief="solid")
@@ -574,7 +590,7 @@ class SSystem(ttk.Frame):
                 except Exception as e:
                     print("Error in face recognition:", e)
 
-            if self.license_recognition_enabled and camera_id == 1:
+            if self.license_recognition_enabled and camera_id == 0:
                 self.license_cam = frame
 
                 self.start_computation_thread()
@@ -793,7 +809,7 @@ class SSystem(ttk.Frame):
                         # Cleaning up the result
                         ocr_result = "".join(ocr_result.split()).replace(":", "").replace("-", "")
 
-                        extracted_text = f'{ocr_result[:3]}{ocr_result[3:7]}'
+                        extracted_text = f'{ocr_result[:2]}{ocr_result[2:7]}'
 
                         # Display the extracted text
                         print("EXTRACTED TEXT: ", extracted_text)
@@ -819,17 +835,19 @@ class SSystem(ttk.Frame):
                         #     print(f"License plate {extracted_text} is in the vehicles data.")
 
                         else:
-                            pattern = r'[A-Z]{3}\d{4}'
+                            pattern = r'[A-Z]{2}\d{5}'
+                            pattern2 = r'[A-Z]{2}\d{5}'
 
                             print("counter: ", self.license_frame_counter)
 
                             if self.license_frame_counter == 5:
 
-                                pattern = r'[A-Z]{3}\d{4}'
+                                pattern = r'[A-Z]{2}\d{5}'
+                                pattern2 = r'[A-Z]{3}\d{4}'
                                 filtered_licenses = []
 
                                 for licenses in self.collected_licenses:
-                                    if re.match(pattern, licenses):
+                                    if re.match(pattern, licenses) or re.match(pattern2, licenses):
                                         filtered_licenses.append(licenses)
 
                                 print("Collected licenses:", filtered_licenses)
@@ -848,7 +866,7 @@ class SSystem(ttk.Frame):
                                 self.license_counter = 1
                                 self.license_recognized = False
 
-                            elif re.match(pattern, extracted_text):
+                            elif re.match(pattern, extracted_text) or re.match(pattern2, extracted_text):
                                 self.collected_licenses.append(extracted_text)
 
                                 self.license_frame_counter += 1
@@ -969,6 +987,7 @@ class SSystem(ttk.Frame):
         self.most_common_license = None
         self.visitor = None
         self.driver_name.set("")
+        self.type.set("")
         self.id_number.set("")
         self.phone.set("")
         self.plate.set("")
@@ -1018,12 +1037,12 @@ class SSystem(ttk.Frame):
 
         coldata = [
             {"text": "Name", "stretch": False},
+            {"text": "Type", "stretch": False},
             {"text": "ID number", "stretch": False},
             {"text": "Plate number", "stretch": False},
             {"text": "Phone", "stretch": False},
             {"text": "Date", "stretch": False},
             {"text": "Time in", "stretch": False},
-            {"text": "Time out", "stretch": False},
         ]
 
         rowdata = [list(row) for row in database.fetch_daily_logs()]
@@ -1060,6 +1079,7 @@ class SSystem(ttk.Frame):
         id_number_value = self.id_number.get()
         phone_value = self.phone.get()
         driver_name_value = self.driver_name.get()
+        type_value = self.type.get()
         plate_value = self.plate.get()
 
         # not authorized
@@ -1071,11 +1091,11 @@ class SSystem(ttk.Frame):
             time_in_status = 0
             is_registered = 1
 
-            database.insert_logs(driver_name_value, id_number_value, plate_value, phone_value, self.date, self.time_in,
+            database.insert_logs(driver_name_value, type_value, id_number_value, plate_value, phone_value, self.date, self.time_in,
                                  None, time_in_status, is_registered)
 
             self.table_view.insert_row(index=0,
-                                       values=[driver_name_value, id_number_value, plate_value, phone_value, self.date,
+                                       values=[driver_name_value, type_value, id_number_value, plate_value, phone_value, self.date,
                                                self.time_in, None, time_in_status, is_registered])
 
             local_directory = "Images/unregistered driver/"
@@ -1095,11 +1115,13 @@ class SSystem(ttk.Frame):
             time_in_status = 0
             is_registered = 0
 
-            database.insert_logs(driver_name_value, id_number_value, plate_value, phone_value, self.date, self.time_in,
+            database.insert_logs(driver_name_value, type_value, id_number_value, plate_value, phone_value, self.date,
+                                 self.time_in,
                                  None, time_in_status, is_registered)
 
             self.table_view.insert_row(index=0,
-                                       values=[driver_name_value, id_number_value, plate_value, phone_value, self.date,
+                                       values=[driver_name_value, type_value, id_number_value, plate_value, phone_value,
+                                               self.date,
                                                self.time_in, None, time_in_status, is_registered])
 
         # not authorized
@@ -1109,11 +1131,13 @@ class SSystem(ttk.Frame):
             time_in_status = 0
             is_registered = 1
 
-            database.insert_logs(driver_name_value, id_number_value, plate_value, phone_value, self.date, self.time_in,
+            database.insert_logs(driver_name_value, type_value, id_number_value, plate_value, phone_value, self.date,
+                                 self.time_in,
                                  None, time_in_status, is_registered)
 
             self.table_view.insert_row(index=0,
-                                       values=[driver_name_value, id_number_value, plate_value, phone_value, self.date,
+                                       values=[driver_name_value, type_value, id_number_value, plate_value, phone_value,
+                                               self.date,
                                                self.time_in, None, time_in_status, is_registered])
 
             local_directory = "Images/unregistered driver/"
@@ -1134,11 +1158,13 @@ class SSystem(ttk.Frame):
             time_in_status = 0
             is_registered = 1
 
-            database.insert_logs(driver_name_value, id_number_value, plate_value, phone_value, self.date, self.time_in,
+            database.insert_logs(driver_name_value, type_value, id_number_value, plate_value, phone_value, self.date,
+                                 self.time_in,
                                  None, time_in_status, is_registered)
 
             self.table_view.insert_row(index=0,
-                                       values=[driver_name_value, id_number_value, plate_value, phone_value, self.date,
+                                       values=[driver_name_value, type_value, id_number_value, plate_value, phone_value,
+                                               self.date,
                                                self.time_in, None, time_in_status, is_registered])
 
 

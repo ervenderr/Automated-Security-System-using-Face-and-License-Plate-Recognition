@@ -11,12 +11,16 @@ from ttkbootstrap.tableview import Tableview
 from ttkbootstrap import Style
 from ttkbootstrap.toast import ToastNotification
 
+import EncodeGenerator
 from database import *
 from tkinter import filedialog
 
 profile_icon = None
 DEFAULT_PROFILE_ICON_PATH = "images/Profile_Icon.png"
 DEFAULT_BG_PATH = "images/wmsubg.png"
+
+img = None
+filename = None
 
 
 def create_driver(parent_tab):
@@ -72,11 +76,12 @@ def create_driver(parent_tab):
 
     coldata = [
         {"text": "Name", "stretch": True},
-        {"text": "ID number", "stretch": True},
+        {"text": "Type", "stretch": True},
+        {"text": "ID number", "stretch": True, "width": 150},
+        {"text": "Phone", "stretch": True, "width": 150},
         {"text": "Plate number", "stretch": True},
-        {"text": "Phone", "stretch": True},
-        {"text": "Vehicle color", "stretch": True},
         {"text": "Vehicle type", "stretch": True},
+        {"text": "Vehicle color", "stretch": True},
         {"text": "Date", "stretch": True},
     ]
 
@@ -86,6 +91,7 @@ def create_driver(parent_tab):
     for driver_id, driver_info in drivers_data.items():
         if "name" in driver_info:
             driver_name = driver_info["name"]
+            type = driver_info["type"]
             id_number = driver_info["id_number"]
             phone = driver_info["phone"]
 
@@ -100,13 +106,42 @@ def create_driver(parent_tab):
                     associated_vehicle_color.append(vehicle_info["vehicle_color"])
 
             # Add the driver's data to the rowdata
-            rowdata.append([driver_name, id_number, ", ".join(associated_vehicle_plate), phone,
+            rowdata.append([driver_name, type, id_number, phone, ", ".join(associated_vehicle_plate),
                             ", ".join(associated_vehicle_type), ", ".join(associated_vehicle_color),
                             ""])
+
+    # table 2
+    coldata2 = [
+        {"text": "Plate number", "stretch": True},
+        {"text": "Vehicle type", "stretch": True},
+        {"text": "Vehicle color", "stretch": True},
+        {"text": "Driver's ID", "stretch": True},
+        {"text": "Date", "stretch": True},
+    ]
+
+    rowdata2 = []
+
+    # Populate rowdata with data from the database
+    for vehicle_id, vehicle_info in vehicles_data.items():
+        if "plate_number" in vehicle_info:
+            vehicle_plate = vehicle_info["plate_number"]
+            vehicle_type = vehicle_info.get("vehicle_type", "")
+            vehicle_color = vehicle_info.get("vehicle_color", "")
+
+            associated_driver_id = []
+
+            for driver_id, is_associated in vehicle_info.get("drivers", {}).items():
+                if is_associated:
+                    driver_info = drivers_data.get(driver_id, {})
+                    if "id_number" in driver_info:
+                        associated_driver_id.append(driver_info["id_number"])
+
+            rowdata2.append([vehicle_plate, vehicle_type, vehicle_color, ", ".join(map(str, associated_driver_id))])
 
     def save_driver():
         drivers_id = id_entry.get()
         drivers_name = name_entry.get()
+        drivers_type = type_entry.get()
         driver_phone = phone_entry.get()
         driver_plate = plate_entry.get()
         driver_vehicle_type = vehicle_type_entry.get()
@@ -115,6 +150,7 @@ def create_driver(parent_tab):
         # Save driver's information
         driver_data = {
             'name': drivers_name,
+            'type': drivers_type,
             'id_number': int(drivers_id),
             'phone': int(driver_phone),
         }
@@ -144,10 +180,18 @@ def create_driver(parent_tab):
         date = datetime.date.today().strftime("%Y-%m-%d")
 
         tree_view.insert_row(index=0,
-                             values=[drivers_name, drivers_id, driver_plate, driver_phone, driver_vehicle_color,
-                                     driver_vehicle_type, date])
+                             values=[drivers_name, type, drivers_id, driver_phone, driver_plate, driver_vehicle_type,
+                                     driver_vehicle_color, date])
+
+        tree_view2.insert_row(index=0,
+                              values=[driver_plate, driver_vehicle_color, driver_vehicle_type, drivers_id, date])
 
         tree_view.load_table_data()
+        tree_view2.load_table_data()
+
+        clear()
+
+        EncodeGenerator.process_encodings()
 
         toast = ToastNotification(
             title="Success",
@@ -160,28 +204,132 @@ def create_driver(parent_tab):
     def clear():
         id_entry.delete(0, END)
         name_entry.delete(0, END)
+        type_entry.delete(0, END)
         plate_entry.delete(0, END)
         phone_entry.delete(0, END)
         vehicle_type_entry.delete(0, END)
         vehicle_color_entry.delete(0, END)
+        vehicle_drivers_entry.delete(0, END)
 
         driver_image_label.image = default_profile_icon
         driver_image_label.config(image=driver_image_label.image)
 
     def update_driver():
-        pass
+
+        drivers_id = id_entry.get()
+        drivers_name = name_entry.get()
+        drivers_type = type_entry.get()
+        driver_phone = phone_entry.get()
+        driver_plate = plate_entry.get()
+        driver_vehicle_type = vehicle_type_entry.get()
+        driver_vehicle_color = vehicle_color_entry.get()
+
+        # Split input values by comma (assuming they are comma-separated)
+        driver_plates = driver_plate.split(', ')
+        vehicle_types = driver_vehicle_type.split(', ')
+        vehicle_colors = driver_vehicle_color.split(', ')
+
+        if (drivers_id and drivers_name and drivers_type and driver_phone) != '':
+            # Save driver's information
+            driver_data = {
+                'name': drivers_name,
+                'type': drivers_type,
+                'id_number': int(drivers_id),
+                'phone': int(driver_phone),
+            }
+
+            db.child('Drivers').child(drivers_id).set(driver_data)
+            selected = tree_view.view.focus()
+            print(f'selected {selected}')
+
+            row_to_update = tree_view.get_row(iid=selected)
+
+            # Update the values
+            row_to_update.values = [
+                name_entry.get(),
+                type_entry.get(),
+                id_entry.get(),
+                phone_entry.get(),
+                datetime.date.today().strftime("%Y-%m-%d")
+            ]
+            row_to_update.refresh()
+
+            if driver_data and img is not None:
+                # Convert the image to bytes
+                _, buffer = cv2.imencode('.png', img)
+                img_bytes = buffer.tobytes()
+
+                cloud_filename = f"driver images/{drivers_id}.png"
+                pyre_storage.child(cloud_filename).put(img_bytes)
+
+        if (driver_plate and driver_vehicle_type and driver_vehicle_color) != '':
+            # Iterate through the lists
+            for i in range(len(driver_plates)):
+                driver_plate_value = driver_plates[i]
+                vehicle_type_value = vehicle_types[i]
+                vehicle_color_value = vehicle_colors[i]
+
+                # Check if the vehicle exists in the database
+                vehicle_data = db.child('Vehicles').child(driver_plate_value).get().val()
+
+                if not vehicle_data:
+                    # Create a new vehicle entry
+                    vehicle_data = {
+                        'plate_number': driver_plate_value,
+                        'vehicle_color': vehicle_color_value,
+                        'vehicle_type': vehicle_type_value,
+                        'drivers': {}
+                    }
+
+                # Add the driver to the vehicle's "drivers" field
+                vehicle_data['drivers'][drivers_id] = True
+
+                # Save the vehicle data in the database with the updated "drivers" field
+                db.child('Vehicles').child(driver_plate_value).set(vehicle_data)
+
+            selected2 = tree_view2.view.focus()
+            print(f'selected2 {selected2}')
+
+            # Get the row object
+            row_to_update2 = tree_view2.get_row(iid=selected2)
+
+            row_to_update2.values = [
+                plate_entry.get(),
+                vehicle_color_entry.get(),
+                vehicle_type_entry.get(),
+                vehicle_drivers_entry.get(),
+                datetime.date.today().strftime("%Y-%m-%d")
+            ]
+
+            # Refresh the row
+            row_to_update2.refresh()
+
+        # Other steps like clearing entries, showing toast etc
+
+        clear()
+
+        toast = ToastNotification(
+            title="Success",
+            message="Driver Updated",
+            duration=3000,
+        )
+
+        toast.show_toast()
+
+        print("Driver Updated")
 
     def delete_driver():
         pass
 
-    def selected_row():
+    def selected_driver_row(e):
 
         id_entry.delete(0, END)
         name_entry.delete(0, END)
-        plate_entry.delete(0, END)
+        type_entry.delete(0, END)
+        # plate_entry.delete(0, END)
         phone_entry.delete(0, END)
-        vehicle_type_entry.delete(0, END)
-        vehicle_color_entry.delete(0, END)
+        # vehicle_type_entry.delete(0, END)
+        # vehicle_color_entry.delete(0, END)
 
         selected_indices = tree_view.view.selection()  # Get the selected indices
         print('selected_indices: ', selected_indices)
@@ -189,17 +337,18 @@ def create_driver(parent_tab):
         selected = tree_view.view.focus()
         values = tree_view.view.item(selected, 'values')
 
-        id_nums = values[1]
+        id_nums = values[2]
         if len(id_nums) < 5:
             # Add leading zeros to make it 5 characters long
             id_nums = id_nums.zfill(5)
 
         name_entry.insert(0, values[0])
-        id_entry.insert(0, values[1])
-        plate_entry.insert(0, values[2])
+        type_entry.insert(0, values[1])
+        id_entry.insert(0, values[2])
+        # plate_entry.insert(0, values[4])
         phone_entry.insert(0, values[3])
-        vehicle_type_entry.insert(0, values[4])
-        vehicle_color_entry.insert(0, values[5])
+        # vehicle_type_entry.insert(0, values[5])
+        # vehicle_color_entry.insert(0, values[6])
 
         print("id: ", id_nums)
 
@@ -218,6 +367,31 @@ def create_driver(parent_tab):
 
         driver_image_label.image = driver_image
         driver_image_label.config(image=driver_image_label.image)
+
+    def selected_vehicle_row(e):
+
+        vehicle_drivers_entry.delete(0, END)
+        plate_entry.delete(0, END)
+        vehicle_type_entry.delete(0, END)
+        vehicle_color_entry.delete(0, END)
+
+        selected_indices = tree_view2.view.selection()  # Get the selected indices
+        print('selected_indices: ', selected_indices)
+
+        selected = tree_view2.view.focus()
+        values = tree_view2.view.item(selected, 'values')
+
+        plate_nums = values[0]
+
+        vehicle_drivers_entry.insert(0, values[3])
+        plate_entry.insert(0, values[0])
+        vehicle_type_entry.insert(0, values[1])
+        vehicle_color_entry.insert(0, values[2])
+
+        print("id: ", plate_nums)
+
+    def remove_id():
+        pass
 
     # Configure row and column weights
     parent_tab.grid_rowconfigure(0, weight=1)
@@ -254,7 +428,7 @@ def create_driver(parent_tab):
                                       width=50, font=("Arial", 20, "bold"))
 
     # Center the label within the time_date_frame
-    time_date_label.grid(row=0, column=0, sticky="nsew")
+    time_date_label.grid(row=0, column=0, sticky="ew")
     registered_label_text.grid(row=1, column=0, sticky="nsew")
 
     # Start updating the time and date label
@@ -279,6 +453,23 @@ def create_driver(parent_tab):
     table_frame.grid_rowconfigure(1, weight=1)
     table_frame.grid_columnconfigure(0, weight=1)
 
+    registered_label_text = ttk.Label(table_frame, text="REGISTERED VEHICLE",
+                                      width=50, font=("Arial", 20, "bold"))
+    registered_label_text.grid(row=3, column=0, sticky="nsew", pady=20)
+
+    tree_view2 = Tableview(
+        master=table_frame,
+        coldata=coldata2,
+        rowdata=rowdata2,
+        paginated=True,
+        searchable=True,
+        bootstyle=PRIMARY,
+        stripecolor=None,
+        autoalign=False,
+    )
+    tree_view2.grid(row=4, column=0, sticky="nsw")
+    tree_view2.load_table_data()
+
     # Profile icon label
     default_profile_icon_image = Image.open(DEFAULT_PROFILE_ICON_PATH)
     default_profile_icon_image = default_profile_icon_image.resize((250, 250), Image.Resampling.LANCZOS)
@@ -297,6 +488,11 @@ def create_driver(parent_tab):
     name_entry = ttk.Entry(profile_driver_frame, font=('Helvetica', 13))
     name_entry.pack(padx=5, pady=5, fill=BOTH)
 
+    type_label = ttk.Label(profile_driver_frame, text="Type:")
+    type_label.pack(padx=5, pady=5, fill=BOTH)
+    type_entry = ttk.Entry(profile_driver_frame, font=('Helvetica', 13))
+    type_entry.pack(padx=5, pady=5, fill=BOTH)
+
     id_label = ttk.Label(profile_driver_frame, text="ID:")
     id_label.pack(padx=5, pady=5, fill=BOTH)
     id_entry = ttk.Entry(profile_driver_frame, font=('Helvetica', 13))
@@ -306,6 +502,10 @@ def create_driver(parent_tab):
     phone_label.pack(padx=5, pady=5, fill=BOTH)
     phone_entry = ttk.Entry(profile_driver_frame, font=('Helvetica', 13))
     phone_entry.pack(padx=5, pady=5, fill=BOTH)
+
+    instruction_text2 = "Vehicle Details: "
+    instruction2 = ttk.Label(profile_driver_frame, text=instruction_text2)
+    instruction2.pack(fill=X, pady=(20, 5))
 
     plate_label = ttk.Label(profile_driver_frame, text="Plate number:")
     plate_label.pack(padx=5, pady=5, fill=BOTH)
@@ -322,6 +522,11 @@ def create_driver(parent_tab):
     vehicle_color_entry = ttk.Entry(profile_driver_frame, font=('Helvetica', 13))
     vehicle_color_entry.pack(padx=5, pady=5, fill=BOTH)
 
+    vehicle_drivers = ttk.Label(profile_driver_frame, text="Authorized Drivers:")
+    vehicle_drivers.pack(padx=5, pady=5, fill=BOTH)
+    vehicle_drivers_entry = ttk.Entry(profile_driver_frame, font=('Helvetica', 13))
+    vehicle_drivers_entry.pack(padx=5, pady=5, fill=BOTH)
+
     anchors = ttk.Style().configure('TButton', anchor='SW')
 
     insert_image_button = ttk.Button(profile_driver_frame, text="Insert Image", bootstyle=SUCCESS, style=anchors)
@@ -336,14 +541,20 @@ def create_driver(parent_tab):
 
     # Add CRUD buttons
     create_button = ttk.Button(crud_frame, text="SAVE", command=save_driver, bootstyle=SUCCESS)
-    read_button = ttk.Button(crud_frame, text="SELECT", command=selected_row, bootstyle=PRIMARY)
+    take_photo = ttk.Button(crud_frame, text="TAKE A PHOTO", command=selectPic, bootstyle=SUCCESS)
     update_button = ttk.Button(crud_frame, text="UPDATE", command=update_driver, bootstyle=PRIMARY)
     clear_button = ttk.Button(crud_frame, text="CLEAR", command=clear, bootstyle=PRIMARY)
     delete_button = ttk.Button(crud_frame, text="DELETE", command=delete_driver, bootstyle=DANGER)
 
     # Pack the buttons
     create_button.pack(side=LEFT, padx=10, pady=10)
-    read_button.pack(side=LEFT, padx=10, pady=10)
+    take_photo.pack(side=LEFT, padx=10, pady=10)
     update_button.pack(side=LEFT, padx=10, pady=10)
     clear_button.pack(side=LEFT, padx=10, pady=10)
     delete_button.pack(side=LEFT, padx=10, pady=10)
+
+    style = ttk.Style()
+    style.configure('Treeview', font=('Helvetica', 12), rowheight=40)
+
+    tree_view.view.bind("<ButtonRelease-1>", selected_driver_row)
+    tree_view2.view.bind("<ButtonRelease-1>", selected_vehicle_row)

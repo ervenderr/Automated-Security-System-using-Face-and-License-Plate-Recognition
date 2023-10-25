@@ -72,19 +72,21 @@ def history_logs(parent_tab):
     vehicles_data = db.child("Vehicles").get().val()
 
     coldata = [
-        {"text": "Name", "stretch": False},
-        {"text": "ID number", "stretch": False},
-        {"text": "Plate number", "stretch": False},
-        {"text": "Phone", "stretch": False},
-        {"text": "Date", "stretch": False},
-        {"text": "Time in", "stretch": False},
-        {"text": "Time out", "stretch": False},
+        {"text": "Name", "stretch": True},
+        {"text": "Type", "stretch": True},
+        {"text": "ID number", "stretch": True, "width": 150},
+        {"text": "Plate number", "stretch": True},
+        {"text": "Phone", "stretch": True, "width": 150},
+        {"text": "Date", "stretch": True,},
+        {"text": "Time in", "stretch": True,},
+        {"text": "Time out", "stretch": True,},
     ]
 
     rowdata = [list(row) for row in database.fetch_all_logs()]
 
     def save_driver():
         drivers_id = id_entry.get()
+        drivers_type = type_entry.get()
         drivers_name = name_entry.get()
         driver_phone = phone_entry.get()
         driver_plate = plate_entry.get()
@@ -94,10 +96,11 @@ def history_logs(parent_tab):
         # Save driver's information
         driver_data = {
             'name': drivers_name,
+            'type': drivers_type,
             'id_number': int(drivers_id),
             'phone': int(driver_phone),
         }
-        db.child('Drivers').child(drivers_id).set(driver_data)
+        # db.child('Drivers').child(drivers_id).set(driver_data)
 
         # Check if the vehicle exists in Vehicles node
         vehicle_data = db.child('Vehicles').child(driver_plate).get().val()
@@ -110,9 +113,9 @@ def history_logs(parent_tab):
             }
         else:
             vehicle_data['drivers'][drivers_id] = True
-        db.child('Vehicles').child(driver_plate).set(vehicle_data)
+        # db.child('Vehicles').child(driver_plate).set(vehicle_data)
 
-        if driver_data:
+        if driver_data and img is not None:
             # Convert the image to bytes
             _, buffer = cv2.imencode('.png', img)
             img_bytes = buffer.tobytes()
@@ -121,12 +124,27 @@ def history_logs(parent_tab):
             pyre_storage.child(cloud_filename).put(img_bytes)
 
         date = datetime.date.today().strftime("%Y-%m-%d")
+        ph_tz = pytz.timezone('Asia/Manila')
+        current_time = datetime.datetime.now(tz=ph_tz).strftime("%H:%M:%S")
 
-        tree_view.insert_row(index=0,
-                             values=[drivers_name, drivers_id, driver_plate, driver_phone, driver_vehicle_color,
-                                     driver_vehicle_type, date])
+        selected = tree_view.view.focus()
+        print(f'selected {selected}')
 
-        tree_view.load_table_data()
+        row_to_update = tree_view.get_row(iid=selected)
+
+        # Update the values
+        row_to_update.values = [
+            name_entry.get(),
+            type_entry.get(),
+            id_entry.get(),
+            phone_entry.get(),
+            plate_entry.get(),
+            datetime.date.today().strftime("%Y-%m-%d"),
+            datetime.datetime.now(tz=ph_tz).strftime("%H:%M:%S")
+        ]
+        row_to_update.refresh()
+
+        clear()
 
         toast = ToastNotification(
             title="Success",
@@ -139,6 +157,7 @@ def history_logs(parent_tab):
     def clear():
         id_entry.delete(0, END)
         name_entry.delete(0, END)
+        type_entry.delete(0, END)
         plate_entry.delete(0, END)
         phone_entry.delete(0, END)
         vehicle_type_entry.delete(0, END)
@@ -153,10 +172,11 @@ def history_logs(parent_tab):
     def delete_driver():
         pass
 
-    def selected_row():
-
+    def selected_row(e):
+        global driver_image
         id_entry.delete(0, END)
         name_entry.delete(0, END)
+        type_entry.delete(0, END)
         plate_entry.delete(0, END)
         phone_entry.delete(0, END)
         vehicle_type_entry.delete(0, END)
@@ -168,34 +188,53 @@ def history_logs(parent_tab):
         selected = tree_view.view.focus()
         values = tree_view.view.item(selected, 'values')
 
-        id_nums = values[1]
+        id_nums = values[2
+        ]
         if len(id_nums) < 5:
             # Add leading zeros to make it 5 characters long
             id_nums = id_nums.zfill(5)
 
-        name_entry.insert(0, values[0])
-        id_entry.insert(0, values[1])
-        plate_entry.insert(0, values[2])
-        phone_entry.insert(0, values[3])
-        vehicle_type_entry.insert(0, values[4])
-        vehicle_color_entry.insert(0, values[5])
+        plate_nums = values[3]
+        print(f'id_nums: {id_nums}')
+
+        driver_info = db.child(f'Drivers/{id_nums}').get().val()
+        vehicle_info = db.child(f'Vehicles/{plate_nums}').get().val()
+
+        if driver_info is not None:
+            name_entry.insert(0, driver_info.get("name", ""))
+            type_entry.insert(0, driver_info.get("type", ""))
+            id_entry.insert(0, driver_info.get("id_number", ""))
+            phone_entry.insert(0, driver_info.get("phone", ""))
+            bucket = storage.bucket()
+            blob = bucket.blob(f'driver images/{id_nums}.png')
+            array = np.frombuffer(blob.download_as_string(), np.uint8)
+            img_driver = cv2.imdecode(array, cv2.COLOR_BGR2RGB)
+
+            driver_image = Image.fromarray(img_driver)
+            driver_image = driver_image.resize((250, 250), Image.Resampling.LANCZOS)
+            driver_image = Image.merge("RGB", driver_image.split()[::-1])
+
+        if vehicle_info is not None:
+            plate_entry.insert(0, vehicle_info.get("plate_number", ""))
+            vehicle_type_entry.insert(0, vehicle_info.get("vehicle_type", ""))
+            vehicle_color_entry.insert(0, vehicle_info.get("vehicle_color", ""))
+
+        if driver_info is None:
+            name_entry.insert(0, values[0])
+            img_driver = Image.open(f"Images/unregistered driver/{plate_nums}.jpg")
+            driver_image = np.array(img_driver)
+
+            driver_image = Image.fromarray(driver_image)
+            driver_image = driver_image.resize((250, 250), Image.Resampling.LANCZOS)
+
+        if vehicle_info is None:
+            plate_entry.insert(0, values[3])
 
         print("id: ", id_nums)
 
-        bucket = storage.bucket()
-        blob = bucket.blob(f'driver images/{id_nums}.png')
-        array = np.frombuffer(blob.download_as_string(), np.uint8)
-        img_driver = cv2.imdecode(array, cv2.COLOR_BGR2RGB)
-
-        driver_image = Image.fromarray(img_driver)
-        driver_image = driver_image.resize((250, 250), Image.Resampling.LANCZOS)
-
-        # Convert color channels from BGR to RGB
-        driver_image = Image.merge("RGB", driver_image.split()[::-1])
         driver_image = ImageTk.PhotoImage(driver_image)
-
+        driver_image_label.config(image=driver_image)
         driver_image_label.image = driver_image
-        driver_image_label.config(image=driver_image_label.image)
 
     # Configure row and column weights
     parent_tab.grid_rowconfigure(0, weight=1)
@@ -246,7 +285,7 @@ def history_logs(parent_tab):
         paginated=True,
         searchable=True,
         bootstyle=PRIMARY,
-        stripecolor=None,
+        stripecolor=(),
         autoalign=True,
     )
     tree_view.grid(row=1, column=0, rowspan=2, sticky="nsew")
@@ -275,6 +314,11 @@ def history_logs(parent_tab):
     name_entry = ttk.Entry(profile_driver_frame, font=('Helvetica', 13))
     name_entry.pack(padx=5, pady=5, fill=BOTH)
 
+    type_label = ttk.Label(profile_driver_frame, text="Type:")
+    type_label.pack(padx=5, pady=5, fill=BOTH)
+    type_entry = ttk.Entry(profile_driver_frame, font=('Helvetica', 13))
+    type_entry.pack(padx=5, pady=5, fill=BOTH)
+
     id_label = ttk.Label(profile_driver_frame, text="ID:")
     id_label.pack(padx=5, pady=5, fill=BOTH)
     id_entry = ttk.Entry(profile_driver_frame, font=('Helvetica', 13))
@@ -284,6 +328,10 @@ def history_logs(parent_tab):
     phone_label.pack(padx=5, pady=5, fill=BOTH)
     phone_entry = ttk.Entry(profile_driver_frame, font=('Helvetica', 13))
     phone_entry.pack(padx=5, pady=5, fill=BOTH)
+
+    instruction_text2 = "Vehicle Details: "
+    instruction2 = ttk.Label(profile_driver_frame, text=instruction_text2)
+    instruction2.pack(fill=X, pady=(20, 5))
 
     plate_label = ttk.Label(profile_driver_frame, text="Plate number:")
     plate_label.pack(padx=5, pady=5, fill=BOTH)
@@ -300,12 +348,6 @@ def history_logs(parent_tab):
     vehicle_color_entry = ttk.Entry(profile_driver_frame, font=('Helvetica', 13))
     vehicle_color_entry.pack(padx=5, pady=5, fill=BOTH)
 
-    anchors = ttk.Style().configure('TButton', anchor='SW')
-
-    insert_image_button = ttk.Button(profile_driver_frame, text="Insert Image", bootstyle=SUCCESS, style=anchors)
-    insert_image_button.pack(padx=5, pady=(10), side=LEFT)
-    insert_image_button['command'] = selectPic
-
     # Create a new frame for CRUD buttons
     crud_frame = ttk.LabelFrame(parent_tab, text='Actions')
     crud_frame.grid(row=1, column=3, sticky="nsew", padx=5, pady=5)
@@ -314,14 +356,16 @@ def history_logs(parent_tab):
 
     # Add CRUD buttons
     create_button = ttk.Button(crud_frame, text="SAVE", command=save_driver, bootstyle=SUCCESS)
-    read_button = ttk.Button(crud_frame, text="SELECT", command=selected_row, bootstyle=PRIMARY)
-    update_button = ttk.Button(crud_frame, text="UPDATE", command=update_driver, bootstyle=PRIMARY)
+    take_photo = ttk.Button(crud_frame, text="TAKE A PHOTO", command=save_driver, bootstyle=SUCCESS)
     clear_button = ttk.Button(crud_frame, text="CLEAR", command=clear, bootstyle=PRIMARY)
     delete_button = ttk.Button(crud_frame, text="DELETE", command=delete_driver, bootstyle=DANGER)
 
     # Pack the buttons
     create_button.pack(side=LEFT, padx=10, pady=10)
-    read_button.pack(side=LEFT, padx=10, pady=10)
-    update_button.pack(side=LEFT, padx=10, pady=10)
+    take_photo.pack(side=LEFT, padx=10, pady=10)
     clear_button.pack(side=LEFT, padx=10, pady=10)
     delete_button.pack(side=LEFT, padx=10, pady=10)
+
+    take_photo['command'] = selectPic
+
+    tree_view.view.bind("<ButtonRelease-1>", selected_row)
