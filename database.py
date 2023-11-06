@@ -68,20 +68,38 @@ def fetch_driver_vehicle():
 def fetch_all_logs():
     conn = sqlite3.connect('drivers.db')
     c = conn.cursor()
-    today = datetime.datetime.now().date()
-    c.execute('SELECT name, type, id_number, plate_number, phone, date, time_in FROM daily_logs '
-              'ORDER BY time(time_in) DESC')
+
+    # Fetch data from daily_logs, drivers, and vehicles tables
+    c.execute('''
+        SELECT d.name, d.type, dl.id_number, dl.plate_number, d.phone, dl.date, dl.time_in
+        FROM daily_logs dl
+        JOIN drivers d ON dl.id_number = d.id_number
+        JOIN vehicles v ON dl.plate_number = v.plate_number
+        ORDER BY time(dl.time_in) DESC
+    ''')
+
     data_logs = c.fetchall()
     conn.close()
     return data_logs
 
+
 def fetch_daily_logs():
     conn = sqlite3.connect('drivers.db')
     c = conn.cursor()
-    today = datetime.datetime.now().date()
-    c.execute('SELECT name, type, id_number, plate_number, phone, date, time_in FROM daily_logs '
-              'WHERE date=? '
-              'ORDER BY time(time_in) DESC', (str(today),))
+
+    # Get today's date as a string
+    today = datetime.date.today().strftime('%Y-%m-%d')
+
+    # Fetch data from daily_logs, drivers, and vehicles tables
+    c.execute('''
+        SELECT d.name, d.type, dl.id_number, dl.plate_number, d.phone, dl.date, dl.time_in
+        FROM daily_logs dl
+        JOIN drivers d ON dl.id_number = d.id_number
+        JOIN vehicles v ON dl.plate_number = v.plate_number
+        WHERE dl.date = ?
+        ORDER BY time(dl.time_in) DESC
+    ''', (today,))
+
     data_logs = c.fetchall()
     conn.close()
     return data_logs
@@ -112,6 +130,48 @@ def insert_logs(name, type, id_number, plate_number, phone, date, time_in, time_
 
     conn.commit()
     conn.close()
+
+
+def fetch_drivers_data(plate_number):
+    # Connect to the SQLite database
+    conn = sqlite3.connect('drivers.db')
+    c = conn.cursor()
+
+    # Query the "drivers" table to retrieve data for drivers authorized for the specified vehicle
+    c.execute('''
+        SELECT d.name, d.type, d.id_number, d.phone
+        FROM drivers d
+        JOIN driver_vehicle dv ON d.id_number = dv.driver_id
+        WHERE dv.plate_number = ?
+    ''', (plate_number,))
+
+    drivers_data = c.fetchall()
+
+    # Close the database connection
+    conn.close()
+
+    return drivers_data
+
+def fetch_vehicles_data(id_number):
+
+    # Connect to the SQLite database
+    conn = sqlite3.connect('drivers.db')
+    c = conn.cursor()
+
+    # Query the "vehicles" table to retrieve vehicles associated with the specified driver
+    c.execute('''
+        SELECT v.plate_number, v.vehicle_type, v.vehicle_color
+        FROM vehicles v
+        JOIN driver_vehicle dv ON v.plate_number = dv.plate_number
+        WHERE dv.driver_id = ?
+    ''', (id_number,))
+
+    vehicles_data = c.fetchall()
+
+    # Close the database connection
+    conn.close()
+
+    return vehicles_data
 
 
 

@@ -20,6 +20,9 @@ from ttkbootstrap.icons import Icon
 from ttkbootstrap.validation import add_regex_validation
 from ultralytics import YOLO
 from firebase_admin import db
+
+from authorized_drivers import authorized_driver
+from authorized_vehicle import authorized_vehicle
 from history_logs import *
 from register import create_driver
 import queue
@@ -205,8 +208,8 @@ class SSystem(ttk.Frame):
 
         # Check if the "Home" tab is selected, enable face recognition
         if current_tab_index == 0:
-            self.face_recognition_enabled = True
-            self.license_recognition_enabled = True
+            self.face_recognition_enabled = False
+            self.license_recognition_enabled = False
 
         elif current_tab_index == 1:
             self.face_recognition_enabled = False
@@ -284,8 +287,8 @@ class SSystem(ttk.Frame):
         self.camera_label2 = ttk.Label(camera_container, borderwidth=3, relief="solid", style="license_border.TLabel")
         self.camera_label2.pack(side=RIGHT)
 
-        self.start_camera_feed(1, self.camera_label1)
-        self.start_camera_feed(0, self.camera_label2)
+        self.start_camera_feed(0, self.camera_label1)
+        self.start_camera_feed(1, self.camera_label2)
 
         # Separator line between camera feeds and driver details
         separator = ttk.Separator(container_frame, orient=VERTICAL)
@@ -318,7 +321,7 @@ class SSystem(ttk.Frame):
         instruction = ttk.Label(profile_driver_frame, text=instruction_text)
         instruction.pack(fill=X, pady=5)
 
-        form_entry_labels = ["Name: ", "Type: ", "ID number: ", "Phone: ", "Plate number: ", "Vehicle type: ", "Vehicle color: "]
+        form_entry_labels = ["Name: ", "Category: ", "ID number: ", "Phone: ", "Plate number: ", "Vehicle type: ", "Vehicle color: "]
         form_entry_vars = [self.driver_name, self.type, self.id_number, self.phone, self.plate, self.vehicle_type,
                            self.vehicle_color]
 
@@ -428,7 +431,7 @@ class SSystem(ttk.Frame):
         # instruction = ttk.Label(profile_driver_frame, text=instruction_text)
         # instruction.pack(fill=X, pady=5)
         #
-        # form_entry_labels = ["Name: ", "Type: ", "ID number: ", "Phone: ", "Plate number: ", "Vehicle type: ",
+        # form_entry_labels = ["Name: ", "Category: ", "ID number: ", "Phone: ", "Plate number: ", "Vehicle type: ",
         #                      "Vehicle color: "]
         # form_entry_vars = [self.driver_name, self.type, self.id_number, self.phone, self.plate, self.vehicle_type,
         #                    self.vehicle_color]
@@ -447,7 +450,7 @@ class SSystem(ttk.Frame):
     def update_driver_details(self):
         if self.driver_info is not None and self.img_driver is not None and self.vehicle_info is not None:
             self.driver_name.set(self.driver_info.get("name", ""))
-            self.type.set(self.driver_info.get("type", ""))
+            self.type.set(self.driver_info.get("Category", ""))
             self.id_number.set(self.driver_info.get("id_number", ""))
             self.phone.set(self.driver_info.get("phone", ""))
             self.plate.set(self.vehicle_info.get("plate_number", ""))
@@ -455,13 +458,7 @@ class SSystem(ttk.Frame):
             self.vehicle_color.set(self.vehicle_info.get("vehicle_color", ""))
 
             # Display the driver's image
-            driver_image = Image.fromarray(self.img_driver)
-            driver_image = driver_image.resize((250, 250), Image.Resampling.LANCZOS)
-
-            # Convert color channels from BGR to RGB
-            driver_image = Image.merge("RGB", driver_image.split()[::-1])
-
-            driver_image = ImageTk.PhotoImage(driver_image)
+            driver_image = ImageTk.PhotoImage(self.img_driver)
             self.driver_image_label.configure(image=driver_image)
             self.driver_image_label.image = driver_image  # Keep a reference to avoid garbage collection
 
@@ -486,7 +483,6 @@ class SSystem(ttk.Frame):
 
             # Display the driver's image
             driver_image = Image.fromarray(self.img_driver)
-            driver_image = driver_image.resize((250, 250), Image.Resampling.LANCZOS)
 
             driver_image = ImageTk.PhotoImage(driver_image)
             self.driver_image_label.configure(image=driver_image)
@@ -530,13 +526,7 @@ class SSystem(ttk.Frame):
             self.plate.set(self.most_common_license)
 
             # Display the driver's image
-            driver_image = Image.fromarray(self.img_driver)
-            driver_image = driver_image.resize((250, 250), Image.Resampling.LANCZOS)
-
-            # Convert color channels from BGR to RGB
-            driver_image = Image.merge("RGB", driver_image.split()[::-1])
-
-            driver_image = ImageTk.PhotoImage(driver_image)
+            driver_image = ImageTk.PhotoImage(self.img_driver)
             self.driver_image_label.configure(image=driver_image)
             self.driver_image_label.image = driver_image  # Keep a reference to avoid garbage collection
 
@@ -570,7 +560,7 @@ class SSystem(ttk.Frame):
             # Resize frame for display
 
             # Perform face recognition on the second camera feed (camera_id=1)
-            if self.face_recognition_enabled and camera_id == 1:
+            if self.face_recognition_enabled and camera_id == 0:
                 face_cam = frame
                 face_photo = ImageTk.PhotoImage(image=Image.fromarray(face_cam))
                 camera_label.configure(image=face_photo, borderwidth=1, relief="solid")
@@ -607,10 +597,10 @@ class SSystem(ttk.Frame):
                     self.vehicle_info = db.child(f'Vehicles/{self.extracted_text}').get().val()
                     print(self.driver_info)
 
-                    bucket = storage.bucket()
-                    blob = bucket.blob(f'driver images/{self.id}.png')
-                    array = np.frombuffer(blob.download_as_string(), np.uint8)
-                    self.img_driver = cv2.imdecode(array, cv2.COLOR_BGR2RGB)
+                    file_path = f'Images/registered driver/{self.id}.png'
+                    driver_image = Image.open(file_path)
+
+                    self.img_driver = driver_image.resize((250, 250), Image.Resampling.LANCZOS)
 
                     self.face_counter += 1
                     self.license_counter += 1
@@ -668,10 +658,10 @@ class SSystem(ttk.Frame):
                     self.face_counter += 1
                     self.license_counter += 1
 
-                    bucket = storage.bucket()
-                    blob = bucket.blob(f'driver images/{self.id}.png')
-                    array = np.frombuffer(blob.download_as_string(), np.uint8)
-                    self.img_driver = cv2.imdecode(array, cv2.COLOR_BGR2RGB)
+                    file_path = f'Images/registered driver/{self.id}.png'
+                    driver_image = Image.open(file_path)
+
+                    self.img_driver = driver_image.resize((250, 250), Image.Resampling.LANCZOS)
 
                     self.update_driver_details()
                     print("License not registered")
@@ -903,16 +893,26 @@ class SSystem(ttk.Frame):
         form_field_label = ttk.Label(master=form_field_container, text=label, width=15)
         form_field_label.grid(row=0, column=0, padx=12, pady=(0, 5), sticky="w")
 
-        form_input = ttk.Entry(master=form_field_container, textvariable=entry_var,
-                               font=('Helvetica', 13), state=self.states)
-        form_input.grid(row=1, column=0, padx=5, pady=(0, 5), sticky="ew")
+        if variable is self.type:
+            # If the variable is self.type, create a Combobox instead of an Entry widget
+            category = ["Staff", "Faculty", "Independents", "Graduate Students"]  # Replace with your options
+            combobox = ttk.Combobox(master=form_field_container, textvariable=entry_var, font=('Helvetica', 13),
+                                    state=self.states, values=category)
+            combobox.grid(row=1, column=0, padx=5, pady=(0, 5), sticky="ew")
+            widget = combobox
+        else:
+            # For other variables, create an Entry widget
+            form_input = ttk.Entry(master=form_field_container, textvariable=entry_var, font=('Helvetica', 13),
+                                   state=self.states)
+            form_input.grid(row=1, column=0, padx=5, pady=(0, 5), sticky="ew")
+            widget = form_input
 
         # Make the columns of form_field_container expand relative to the container's width
         form_field_container.grid_columnconfigure(0, weight=1)  # Set weight for column 0
 
-        add_regex_validation(form_input, r'^[a-zA-Z0-9_]*$')
+        add_regex_validation(widget, r'^[a-zA-Z0-9_]*')  # Add validation for the widget (either combobox or entry)
 
-        return form_input
+        return widget
 
     def create_buttonbox(self, container):
         button_container = ttk.Frame(container)
@@ -942,7 +942,7 @@ class SSystem(ttk.Frame):
         mark_visitor = ttk.Button(
             master=button_container,
             text="MARK AS VISITOR",
-            command=self.clock_in,
+            command=self.display_assoc_driver,
             bootstyle=PRIMARY,
             style=btn_style
         )
@@ -1188,8 +1188,25 @@ class SSystem(ttk.Frame):
         file.close()
         self.encode_list_known, self.driver_ids = encode_with_ids
 
+    def display_assoc_driver(self):
 
+        parent_tab = Toplevel(self.master_window)
+        parent_tab.title("AUTHORIZED DRIVER")
 
+        authorized_plate = self.type.get()
+        # print(authorized_plate)
+
+        authorized_driver(parent_tab, authorized_plate)
+
+    def display_assoc_vehicle(self):
+
+        parent_tab = Toplevel(self.master_window)
+        parent_tab.title("AUTHORIZED VEHICLE")
+
+        authorized_id = self.id_number.get()
+        # print(authorized_id)
+
+        authorized_vehicle(parent_tab, authorized_id)
 
 
 
@@ -1244,9 +1261,10 @@ class SSystem(ttk.Frame):
         #             print(self.driver_info)
         #
         #             bucket = storage.bucket()
-        #             blob = bucket.blob(f'driver images/{self.id}.png')
-        #             array = np.frombuffer(blob.download_as_string(), np.uint8)
-        #             self.img_driver = cv2.imdecode(array, cv2.COLOR_BGR2RGB)
+        #             file_path = f'Images/registered driver/{self.id}.png'
+        #             driver_image = Image.open(file_path)
+        #
+        #             self.img_driver = driver_image.resize((250, 250), Image.Resampling.LANCZOS)
         #
         #             self.face_counter += 1
         #             self.license_counter += 1
@@ -1305,9 +1323,10 @@ class SSystem(ttk.Frame):
         #             self.license_counter += 1
         #
         #             bucket = storage.bucket()
-        #             blob = bucket.blob(f'driver images/{self.id}.png')
-        #             array = np.frombuffer(blob.download_as_string(), np.uint8)
-        #             self.img_driver = cv2.imdecode(array, cv2.COLOR_BGR2RGB)
+        #             file_path = f'Images/registered driver/{self.id}.png'
+        #             driver_image = Image.open(file_path)
+        #
+        #             self.img_driver = driver_image.resize((250, 250), Image.Resampling.LANCZOS)
         #
         #             self.update_driver_details()
         #             print("License not registered")
