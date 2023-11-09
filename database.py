@@ -47,22 +47,24 @@ db = firebase.database()
 # else:
 #     print(f"No plate number found for id_number {ids}")
 
-def fetch_driver_vehicle():
+def fetch_drivers_and_vehicles():
     conn = sqlite3.connect('drivers.db')
     c = conn.cursor()
 
-    # Define an SQL query to fetch the required data
-    query = '''
-    SELECT Drivers.id_number, Drivers.name, Drivers.phone,
-           Vehicles.plate_number, Vehicles.vehicle_color, Vehicles.vehicle_type
-    FROM Drivers
-    JOIN DriverVehicleAssociation ON Drivers.id = DriverVehicleAssociation.driver_id
-    JOIN Vehicles ON DriverVehicleAssociation.vehicle_id = Vehicles.id
-    '''
-    c.execute(query)
-    data_logs = c.fetchall()
+    # SQL query to fetch driver information and associated vehicles
+    c.execute('''
+        SELECT d.name, d.type, d.id_number, d.phone, GROUP_CONCAT(v.plate_number, ', ') AS authorized_vehicles, d.date
+        FROM drivers d
+        LEFT JOIN driver_vehicle dv ON d.id_number = dv.driver_id
+        LEFT JOIN vehicles v ON dv.plate_number = v.plate_number
+        GROUP BY d.id_number
+    ''')
+
+    drivers_and_vehicles_data = c.fetchall()
+
     conn.close()
-    return data_logs
+
+    return drivers_and_vehicles_data
 
 
 def fetch_all_logs():
@@ -71,10 +73,17 @@ def fetch_all_logs():
 
     # Fetch data from daily_logs, drivers, and vehicles tables
     c.execute('''
-        SELECT d.name, d.type, dl.id_number, dl.plate_number, d.phone, dl.date, dl.time_in
+        SELECT 
+            COALESCE(d.name, 'Visitor_' || dl.plate_number) AS name,
+            COALESCE(d.type, 'Visitor') AS type,
+            dl.id_number,
+            dl.plate_number,
+            d.phone,
+            dl.date,
+            dl.time_in
         FROM daily_logs dl
-        JOIN drivers d ON dl.id_number = d.id_number
-        JOIN vehicles v ON dl.plate_number = v.plate_number
+        LEFT JOIN drivers d ON dl.id_number = d.id_number
+        LEFT JOIN vehicles v ON dl.plate_number = v.plate_number
         ORDER BY time(dl.time_in) DESC
     ''')
 
@@ -92,10 +101,17 @@ def fetch_daily_logs():
 
     # Fetch data from daily_logs, drivers, and vehicles tables
     c.execute('''
-        SELECT d.name, d.type, dl.id_number, dl.plate_number, d.phone, dl.date, dl.time_in
+        SELECT 
+            COALESCE(d.name, 'Visitor_' || dl.plate_number) AS name,
+            COALESCE(d.type, 'Visitor') AS type,
+            dl.id_number,
+            dl.plate_number,
+            d.phone,
+            dl.date,
+            dl.time_in
         FROM daily_logs dl
-        JOIN drivers d ON dl.id_number = d.id_number
-        JOIN vehicles v ON dl.plate_number = v.plate_number
+        LEFT JOIN drivers d ON dl.id_number = d.id_number
+        LEFT JOIN vehicles v ON dl.plate_number = v.plate_number
         WHERE dl.date = ?
         ORDER BY time(dl.time_in) DESC
     ''', (today,))
@@ -119,17 +135,82 @@ def check_extracted_text_for_today(extracted_text):
     return result is not None
 
 
-def insert_logs(name, type, id_number, plate_number, phone, date, time_in, time_out, time_in_status, is_registered):
+def fetch_all_driver():
+    # Connect to the SQLite database
     conn = sqlite3.connect('drivers.db')
     c = conn.cursor()
-    c.execute('INSERT INTO daily_logs (name, type, id_number, plate_number, phone, date, time_in, time_out, '
-              'time_in_status,'
-              'is_registered)'
-              'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-              (name, type, id_number, plate_number, phone, date, time_in, time_out, time_in_status, is_registered))
 
-    conn.commit()
+    # Query the "drivers" table to retrieve data for drivers authorized for the specified vehicle
+    c.execute('''
+        SELECT d.name, d.type, d.id_number, d.phone
+        FROM drivers d
+    ''')
+
+    drivers_data = c.fetchall()
+
+    # Close the database connection
     conn.close()
+
+    return drivers_data
+
+
+def fetch_all_vehicle():
+    # Connect to the SQLite database
+    conn = sqlite3.connect('drivers.db')
+    c = conn.cursor()
+
+    # Query the "vehicles" table to retrieve vehicles associated with the specified driver
+    c.execute('''
+            SELECT v.plate_number, v.vehicle_type, v.vehicle_color
+            FROM vehicles v
+        ''')
+
+    vehicles_data = c.fetchall()
+
+    # Close the database connection
+    conn.close()
+
+    return vehicles_data
+
+
+def fetch_driver(id_number):
+    # Connect to the SQLite database
+    conn = sqlite3.connect('drivers.db')
+    c = conn.cursor()
+
+    # Query the "drivers" table to retrieve data for drivers authorized for the specified vehicle
+    c.execute('''
+        SELECT d.name, d.type, d.id_number, d.phone
+        FROM drivers d
+        WHERE d.id_number = ?
+    ''', (id_number,))
+
+    drivers_data = c.fetchall()
+
+    # Close the database connection
+    conn.close()
+
+    return drivers_data
+
+
+def fetch_vehicle(plate_number):
+    # Connect to the SQLite database
+    conn = sqlite3.connect('drivers.db')
+    c = conn.cursor()
+
+    # Query the "vehicles" table to retrieve vehicles associated with the specified driver
+    c.execute('''
+            SELECT v.plate_number, v.vehicle_type, v.vehicle_color
+            FROM vehicles v
+            WHERE v.plate_number = ?
+        ''', (plate_number,))
+
+    vehicles_data = c.fetchall()
+
+    # Close the database connection
+    conn.close()
+
+    return vehicles_data
 
 
 def fetch_drivers_data(plate_number):
@@ -174,7 +255,33 @@ def fetch_vehicles_data(id_number):
     return vehicles_data
 
 
+def are_associated(driver_id, plate_number):
+    conn = sqlite3.connect('drivers.db')
+    c = conn.cursor()
 
+    # Query the "driver_vehicle" table to check if the given ID and plate number are associated
+    c.execute("SELECT * FROM driver_vehicle WHERE driver_id = ? AND plate_number = ?;", (driver_id, plate_number))
+    association = c.fetchone()
+
+    conn.close()
+
+    return association is not None
+
+
+# INSERT QUERIES:
+
+
+def insert_logs(id_number, plate_number, date, time_in, time_out, time_in_status, is_registered):
+    conn = sqlite3.connect('drivers.db')
+    c = conn.cursor()
+    c.execute('INSERT INTO daily_logs (id_number, plate_number, date, time_in, time_out, '
+              'time_in_status,'
+              'is_registered)'
+              'VALUES (?, ?, ?, ?, ?, ?, ?)',
+              (id_number, plate_number, date, time_in, time_out, time_in_status, is_registered))
+
+    conn.commit()
+    conn.close()
 
 
 # # Connect to the SQLite database

@@ -66,11 +66,6 @@ def history_logs(parent_tab):
         label.config(text=current_time)
         parent_tab.after(1000, lambda: update_time_date(label))
 
-    colors = ttk.Style().colors
-
-    drivers_data = db.child("Drivers").get().val()
-    vehicles_data = db.child("Vehicles").get().val()
-
     coldata = [
         {"text": "Name", "stretch": True},
         {"text": "Type", "stretch": True},
@@ -188,8 +183,7 @@ def history_logs(parent_tab):
         selected = tree_view.view.focus()
         values = tree_view.view.item(selected, 'values')
 
-        id_nums = values[2
-        ]
+        id_nums = values[2]
         if len(id_nums) < 5:
             # Add leading zeros to make it 5 characters long
             id_nums = id_nums.zfill(5)
@@ -197,27 +191,31 @@ def history_logs(parent_tab):
         plate_nums = values[3]
         print(f'id_nums: {id_nums}')
 
-        driver_info = db.child(f'Drivers/{id_nums}').get().val()
-        vehicle_info = db.child(f'Vehicles/{plate_nums}').get().val()
+        driver_info = fetch_driver(id_nums)
+        vehicle_info = fetch_vehicle(plate_nums)
 
         if driver_info is not None:
-            name_entry.insert(0, driver_info.get("name", ""))
-            type_entry.insert(0, driver_info.get("type", ""))
-            id_entry.insert(0, driver_info.get("id_number", ""))
-            phone_entry.insert(0, driver_info.get("phone", ""))
-            bucket = storage.bucket()
-            blob = bucket.blob(f'driver images/{id_nums}.png')
-            array = np.frombuffer(blob.download_as_string(), np.uint8)
-            img_driver = cv2.imdecode(array, cv2.COLOR_BGR2RGB)
 
-            driver_image = Image.fromarray(img_driver)
-            driver_image = driver_image.resize((250, 250), Image.Resampling.LANCZOS)
-            driver_image = Image.merge("RGB", driver_image.split()[::-1])
+            name_entry.insert(0, values[0])
+            type_entry.insert(0, values[1])
+            id_entry.insert(0, values[2])
+            phone_entry.insert(0, values[3])
+
+            print("id: ", id_nums)
+
+            file_path = f'Images/registered driver/{id_nums}.png'
+            driver_image = Image.open(file_path)
+            driver_image = driver_image.resize((200, 200), Image.Resampling.LANCZOS)
+
+            driver_image = ImageTk.PhotoImage(driver_image)
+
+            driver_image_label.image = driver_image
+            driver_image_label.config(image=driver_image_label.image)
 
         if vehicle_info is not None:
-            plate_entry.insert(0, vehicle_info.get("plate_number", ""))
-            vehicle_type_entry.insert(0, vehicle_info.get("vehicle_type", ""))
-            vehicle_color_entry.insert(0, vehicle_info.get("vehicle_color", ""))
+            plate_entry.insert(0, values[4])
+            vehicle_type_entry.insert(0, values[5])
+            vehicle_color_entry.insert(0, values[6])
 
         if driver_info is None:
             name_entry.insert(0, values[0])
@@ -369,3 +367,4 @@ def history_logs(parent_tab):
     take_photo['command'] = selectPic
 
     tree_view.view.bind("<ButtonRelease-1>", selected_row)
+

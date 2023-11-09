@@ -19,7 +19,6 @@ import os
 from ttkbootstrap.icons import Icon
 from ttkbootstrap.validation import add_regex_validation
 from ultralytics import YOLO
-from firebase_admin import db
 
 from authorized_drivers import authorized_driver
 from authorized_vehicle import authorized_vehicle
@@ -208,8 +207,8 @@ class SSystem(ttk.Frame):
 
         # Check if the "Home" tab is selected, enable face recognition
         if current_tab_index == 0:
-            self.face_recognition_enabled = False
-            self.license_recognition_enabled = False
+            self.face_recognition_enabled = True
+            self.license_recognition_enabled = True
 
         elif current_tab_index == 1:
             self.face_recognition_enabled = False
@@ -449,13 +448,17 @@ class SSystem(ttk.Frame):
 
     def update_driver_details(self):
         if self.driver_info is not None and self.img_driver is not None and self.vehicle_info is not None:
-            self.driver_name.set(self.driver_info.get("name", ""))
-            self.type.set(self.driver_info.get("Category", ""))
-            self.id_number.set(self.driver_info.get("id_number", ""))
-            self.phone.set(self.driver_info.get("phone", ""))
-            self.plate.set(self.vehicle_info.get("plate_number", ""))
-            self.vehicle_type.set(self.vehicle_info.get("vehicle_type", ""))
-            self.vehicle_color.set(self.vehicle_info.get("vehicle_color", ""))
+
+            driver_name, driver_type, driver_id, driver_phone = self.driver_info[0]
+            plate_number, vehicle_type, vehicle_color = self.vehicle_info[0]
+
+            self.driver_name.set(driver_name)
+            self.type.set(driver_type)
+            self.id_number.set(driver_id)
+            self.phone.set(driver_phone)
+            self.plate.set(plate_number)
+            self.vehicle_type.set(vehicle_type)
+            self.vehicle_color.set(vehicle_color)
 
             # Display the driver's image
             driver_image = ImageTk.PhotoImage(self.img_driver)
@@ -467,6 +470,7 @@ class SSystem(ttk.Frame):
 
             threading.Timer(3, self.clock_in).start()
 
+        # unauthorized
         elif (self.most_common_license is not None and self.img_driver is not None and self.driver_info is None
               and self.vehicle_info is None):
             self.states = 'focus'
@@ -491,6 +495,7 @@ class SSystem(ttk.Frame):
             self.face_recognition_enabled = False
             self.license_recognition_enabled = False
 
+        # face unauthorized
         elif self.driver_info is None and self.img_driver is not None and self.vehicle_info is not None:
             self.states = 'focus'
 
@@ -514,6 +519,9 @@ class SSystem(ttk.Frame):
             self.face_recognition_enabled = False
             self.license_recognition_enabled = False
 
+            # self.display_assoc_driver()
+
+        # license unauthorized
         elif (self.most_common_license is not None and self.driver_info is not None and self.img_driver is not None
               and self.vehicle_info is None):
 
@@ -532,6 +540,8 @@ class SSystem(ttk.Frame):
 
             self.face_recognition_enabled = False
             self.license_recognition_enabled = False
+
+            # self.display_assoc_vehicle()
 
     def setup_logs_tab(self, parent_tab):
         history_logs(parent_tab)
@@ -580,7 +590,7 @@ class SSystem(ttk.Frame):
                 except Exception as e:
                     print("Error in face recognition:", e)
 
-            if self.license_recognition_enabled and camera_id == 0:
+            if self.license_recognition_enabled and camera_id == 1:
                 self.license_cam = frame
 
                 self.start_computation_thread()
@@ -593,9 +603,10 @@ class SSystem(ttk.Frame):
                     print("id: ", self.id)
                     print("extracted_text : ", self.extracted_text)
 
-                    self.driver_info = db.child(f'Drivers/{self.id}').get().val()
-                    self.vehicle_info = db.child(f'Vehicles/{self.extracted_text}').get().val()
+                    self.driver_info = fetch_driver(self.id)
+                    self.vehicle_info = fetch_vehicle(self.extracted_text)
                     print(self.driver_info)
+                    print(self.vehicle_info)
 
                     file_path = f'Images/registered driver/{self.id}.png'
                     driver_image = Image.open(file_path)
@@ -608,7 +619,9 @@ class SSystem(ttk.Frame):
                     print("id: ", self.id)
                     print("vinfo: ", self.vehicle_info)
 
-                    if self.id in self.vehicle_info['drivers'] and self.vehicle_info['drivers'][self.id]:
+                    associated = are_associated(self.id, self.extracted_text)
+
+                    if associated:
                         self.update_driver_details()
                     else:
                         self.not_match()
@@ -638,7 +651,7 @@ class SSystem(ttk.Frame):
                     self.face_counter += 1
                     self.license_counter += 1
 
-                    self.vehicle_info = db.child(f'Vehicles/{self.extracted_text}').get().val()
+                    self.vehicle_info = fetch_vehicle(self.extracted_text)
                     print(self.vehicle_info)
 
                     unregistered_profile = Image.open("Images/frame_images/best_frame.jpg")
@@ -653,7 +666,7 @@ class SSystem(ttk.Frame):
                     # self.face_recognition_enabled = False
                     # self.license_recognition_enabled = False
 
-                    self.driver_info = db.child(f'Drivers/{self.id}').get().val()
+                    self.driver_info = fetch_driver(self.id)
 
                     self.face_counter += 1
                     self.license_counter += 1
@@ -804,10 +817,10 @@ class SSystem(ttk.Frame):
                         # Display the extracted text
                         print("EXTRACTED TEXT: ", extracted_text)
 
-                        vehicle_data = db.child('Vehicles').get().val()
+                        vehicle_data = fetch_all_vehicle()
                         result = check_extracted_text_for_today(extracted_text)
 
-                        if extracted_text in vehicle_data:
+                        if extracted_text in [record[0] for record in vehicle_data]:
 
                             self.extracted_text = extracted_text
 
@@ -863,6 +876,11 @@ class SSystem(ttk.Frame):
 
                     except Exception as e:
                         print("Error in license recognition:", e)
+
+                # Convert the license_cam image to PhotoImage for display
+                photo = ImageTk.PhotoImage(image=Image.fromarray(self.license_cam))
+                self.camera_label2.configure(image=photo)
+                self.camera_label2.image = photo
 
                 # Convert the license_cam image to PhotoImage for display
                 photo = ImageTk.PhotoImage(image=Image.fromarray(self.license_cam))
@@ -942,7 +960,7 @@ class SSystem(ttk.Frame):
         mark_visitor = ttk.Button(
             master=button_container,
             text="MARK AS VISITOR",
-            command=self.display_assoc_driver,
+            command=self.clock_in,
             bootstyle=PRIMARY,
             style=btn_style
         )
@@ -1057,7 +1075,6 @@ class SSystem(ttk.Frame):
             autoalign=True,
             bootstyle=PRIMARY,
         )
-        self.table_view.load_table_data()
         default_font = nametofont("TkDefaultFont")
         default_font.configure(size=10)
         plate_frame.option_add("*Font", default_font)
@@ -1091,11 +1108,12 @@ class SSystem(ttk.Frame):
             time_in_status = 0
             is_registered = 1
 
-            database.insert_logs(driver_name_value, type_value, id_number_value, plate_value, phone_value, self.date, self.time_in,
+            database.insert_logs(id_number_value, plate_value, self.date, self.time_in,
                                  None, time_in_status, is_registered)
 
             self.table_view.insert_row(index=0,
-                                       values=[driver_name_value, type_value, id_number_value, plate_value, phone_value, self.date,
+                                       values=[driver_name_value, type_value, id_number_value, plate_value, phone_value,
+                                               self.date,
                                                self.time_in, None, time_in_status, is_registered])
 
             local_directory = "Images/unregistered driver/"
@@ -1115,25 +1133,23 @@ class SSystem(ttk.Frame):
             time_in_status = 0
             is_registered = 0
 
-            database.insert_logs(driver_name_value, type_value, id_number_value, plate_value, phone_value, self.date,
-                                 self.time_in,
-                                 None, time_in_status, is_registered)
+            database.insert_logs(id_number_value, plate_value, self.date,
+                                 self.time_in,None, time_in_status, is_registered)
 
             self.table_view.insert_row(index=0,
                                        values=[driver_name_value, type_value, id_number_value, plate_value, phone_value,
                                                self.date,
                                                self.time_in, None, time_in_status, is_registered])
 
-        # not authorized
+        # face not authorized
         elif self.driver_info is None and self.img_driver is not None and self.vehicle_info is not None:
             id_number_value = None
             phone_value = None
             time_in_status = 0
             is_registered = 1
 
-            database.insert_logs(driver_name_value, type_value, id_number_value, plate_value, phone_value, self.date,
-                                 self.time_in,
-                                 None, time_in_status, is_registered)
+            database.insert_logs(id_number_value, plate_value, self.date,
+                                 self.time_in, None, time_in_status, is_registered)
 
             self.table_view.insert_row(index=0,
                                        values=[driver_name_value, type_value, id_number_value, plate_value, phone_value,
@@ -1151,14 +1167,14 @@ class SSystem(ttk.Frame):
 
             threading.Timer(3, process_images()).start()
 
-            # unauthorized
+            # license unauthorized
         elif (self.most_common_license is not None and self.driver_info is not None and self.img_driver is not None
               and self.vehicle_info is None):
 
             time_in_status = 0
             is_registered = 1
 
-            database.insert_logs(driver_name_value, type_value, id_number_value, plate_value, phone_value, self.date,
+            database.insert_logs(id_number_value, plate_value, self.date,
                                  self.time_in,
                                  None, time_in_status, is_registered)
 
@@ -1178,6 +1194,7 @@ class SSystem(ttk.Frame):
                 print("v: ", self.driver_info)
 
         self.table_view.load_table_data()
+
         self.reset()
         print("Inserted")
 
@@ -1208,12 +1225,7 @@ class SSystem(ttk.Frame):
 
         authorized_vehicle(parent_tab, authorized_id)
 
-
-
-
-
-
-    # exit tab
+    # exit
     def update_exit_camera(self, cap, camera_label, camera_id):
         pass
         # ret, frame = cap.read()
@@ -1429,3 +1441,4 @@ if __name__ == "__main__":
     # Start the processing thread on the instance
     s_system.start_computation_thread()
     app.mainloop()
+

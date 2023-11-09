@@ -3,6 +3,9 @@ import face_recognition
 import pickle
 import os
 
+from ttkbootstrap.dialogs import Messagebox
+from ttkbootstrap.icons import Icon
+
 
 def process_images():
     # Define the folder path where your images are stored
@@ -29,8 +32,17 @@ def process_images():
         encode_list = []
         for img in images_list:
             img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-            encode = face_recognition.face_encodings(img)[0]
-            encode_list.append(encode)
+            face_encodings = face_recognition.face_encodings(img)
+
+            if len(face_encodings) > 0:
+                # If there are face encodings, append the first one to the list
+                encode_list.append(face_encodings[0])
+            else:
+                # Handle the case where no face was detected in the image
+                okay = Messagebox.ok("ENCODING ERROR", 'ERROR', icon=Icon.info)
+
+                if okay is None:
+                    print("OK CLICKED")
 
         return encode_list
 
@@ -47,5 +59,4 @@ def process_images():
 
     except Exception as e:
         print(f"An error occurred during encoding: {str(e)}")
-
 

@@ -21,6 +21,7 @@ DEFAULT_BG_PATH = "images/wmsubg.png"
 
 img = None
 filename = None
+page_count = 0
 
 
 def create_driver(parent_tab):
@@ -71,44 +72,23 @@ def create_driver(parent_tab):
 
     colors = ttk.Style().colors
 
-    drivers_data = db.child("Drivers").get().val()
-    vehicles_data = db.child("Vehicles").get().val()
+    drivers_data = fetch_all_driver()
+    vehicles_data = fetch_all_vehicle()
+    data_logs = fetch_drivers_and_vehicles()
 
     coldata = [
         {"text": "Name", "stretch": True},
         {"text": "Type", "stretch": True},
         {"text": "ID number", "stretch": True, "width": 150},
         {"text": "Phone", "stretch": True, "width": 150},
-        {"text": "Plate number", "stretch": True},
-        {"text": "Vehicle type", "stretch": True},
-        {"text": "Vehicle color", "stretch": True},
+        {"text": "Authorized Vehicles", "stretch": True},
         {"text": "Date", "stretch": True},
     ]
 
     rowdata = []
-
-    # Populate rowdata with data from the database
-    for driver_id, driver_info in drivers_data.items():
-        if "name" in driver_info:
-            driver_name = driver_info["name"]
-            type = driver_info["type"]
-            id_number = driver_info["id_number"]
-            phone = driver_info["phone"]
-
-            # Find the vehicles associated with this driver
-            associated_vehicle_plate = []
-            associated_vehicle_type = []
-            associated_vehicle_color = []
-            for vehicle_id, vehicle_info in vehicles_data.items():
-                if "drivers" in vehicle_info and driver_id in vehicle_info["drivers"]:
-                    associated_vehicle_plate.append(vehicle_info["plate_number"])
-                    associated_vehicle_type.append(vehicle_info["vehicle_type"])
-                    associated_vehicle_color.append(vehicle_info["vehicle_color"])
-
-            # Add the driver's data to the rowdata
-            rowdata.append([driver_name, type, id_number, phone, ", ".join(associated_vehicle_plate),
-                            ", ".join(associated_vehicle_type), ", ".join(associated_vehicle_color),
-                            ""])
+    for driver_info in data_logs:
+        driver_name, dtype, id_number, phone, authorized_vehicles, date = driver_info
+        rowdata.append([driver_name, dtype, id_number, phone, authorized_vehicles, date])
 
     # table 2
     coldata2 = [
@@ -120,23 +100,6 @@ def create_driver(parent_tab):
     ]
 
     rowdata2 = []
-
-    # Populate rowdata with data from the database
-    for vehicle_id, vehicle_info in vehicles_data.items():
-        if "plate_number" in vehicle_info:
-            vehicle_plate = vehicle_info["plate_number"]
-            vehicle_type = vehicle_info.get("vehicle_type", "")
-            vehicle_color = vehicle_info.get("vehicle_color", "")
-
-            associated_driver_id = []
-
-            for driver_id, is_associated in vehicle_info.get("drivers", {}).items():
-                if is_associated:
-                    driver_info = drivers_data.get(driver_id, {})
-                    if "id_number" in driver_info:
-                        associated_driver_id.append(driver_info["id_number"])
-
-            rowdata2.append([vehicle_plate, vehicle_type, vehicle_color, ", ".join(map(str, associated_driver_id))])
 
     def save_driver():
         drivers_id = id_entry.get()
@@ -395,8 +358,6 @@ def create_driver(parent_tab):
 
     # Configure row and column weights
     parent_tab.grid_rowconfigure(0, weight=1)
-    parent_tab.grid_columnconfigure(0, weight=1)
-    parent_tab.grid_columnconfigure(1, weight=1)
 
     # Profile driver frame
     profile_driver_frame = ttk.Frame(parent_tab, width=200)
@@ -539,12 +500,34 @@ def create_driver(parent_tab):
     crud_frame.grid_rowconfigure(0, weight=1)
     crud_frame.grid_columnconfigure(0, weight=1)
 
+    # Daily logs table
+    table_frame2 = ttk.Frame(parent_tab)
+
+    instruction_text = "Driver Details: "
+    instruction = ttk.Label(table_frame2, text=instruction_text, width=50)
+    instruction.pack(fill=X, pady=10)
+
+    pages = [table_frame, table_frame2]
+
+    def profile_page():
+        global page_count
+
+        if not page_count > len(pages) - 2:
+            for page in pages:
+                page.grid_forget()
+
+            page_count += 1
+            page = pages[page_count]
+            page.grid(row=0, column=3, sticky="nsew", padx=20, pady=20)
+            table_frame2.grid_rowconfigure(0, weight=1)
+            table_frame2.grid_columnconfigure(0, weight=1)
+
     # Add CRUD buttons
     create_button = ttk.Button(crud_frame, text="SAVE", command=save_driver, bootstyle=SUCCESS)
     take_photo = ttk.Button(crud_frame, text="TAKE A PHOTO", command=selectPic, bootstyle=SUCCESS)
     update_button = ttk.Button(crud_frame, text="UPDATE", command=update_driver, bootstyle=PRIMARY)
     clear_button = ttk.Button(crud_frame, text="CLEAR", command=clear, bootstyle=PRIMARY)
-    delete_button = ttk.Button(crud_frame, text="DELETE", command=delete_driver, bootstyle=DANGER)
+    delete_button = ttk.Button(crud_frame, text="DELETE", command=profile_page, bootstyle=DANGER)
 
     # Pack the buttons
     create_button.pack(side=LEFT, padx=10, pady=10)
