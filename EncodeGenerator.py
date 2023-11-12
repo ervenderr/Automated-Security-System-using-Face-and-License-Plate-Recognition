@@ -2,34 +2,24 @@ import cv2
 import face_recognition
 import pickle
 import os
-from PIL import Image, ImageTk
-import firebase_admin
-from firebase_admin import credentials
-from firebase_admin import db
-from firebase_admin import storage
-import numpy as np
-from database import *
 
 
 def process_encodings():
-    # Fetch the list of file paths in the Firebase Storage bucket
-    bucket = storage.bucket()
-    blobs = bucket.list_blobs(prefix="driver images/")
-    path_list = [blob.name.split("/")[-1] for blob in blobs if blob.name.endswith(".jpg") or blob.name.endswith(".png")]
+    # Assuming your local storage path is "Images/registered driver"
+    local_storage_path = "Images/registered driver"
+
+    # Fetch the list of file paths in the local storage directory
+    path_list = [file for file in os.listdir(local_storage_path) if file.endswith(".jpg") or file.endswith(".png")]
 
     img_list = []
     driver_ids = []
 
     for path in path_list:
-        blob = bucket.blob(f"driver images/{path}")
-        image_data = blob.download_as_bytes()
+        image_path = os.path.join(local_storage_path, path)
 
-        nparr = np.frombuffer(image_data, np.uint8)
-        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-
+        img = cv2.imread(image_path)
         img_list.append(img)
         driver_ids.append(os.path.splitext(path)[0])
-
 
     def find_encodings(img_list):
         encode_list = []
@@ -41,12 +31,14 @@ def process_encodings():
 
         return encode_list
 
-
     encode_list_known = find_encodings(img_list)
     encode_with_ids = [encode_list_known, driver_ids]
     print("complete")
 
-    file = open("registered_encode_file.p", 'wb')
-    pickle.dump(encode_with_ids, file)
-    file.close()
-    print("file saved")
+    file_path = "registered_encode_file.p"
+    with open(file_path, 'wb') as file:
+        pickle.dump(encode_with_ids, file)
+
+    print(f"File saved to {file_path}")
+
+

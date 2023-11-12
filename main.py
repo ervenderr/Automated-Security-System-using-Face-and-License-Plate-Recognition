@@ -35,6 +35,8 @@ from ttkbootstrap import Style
 from ttkbootstrap.dialogs import Messagebox
 from database import *
 import pytesseract
+
+from tables import daily_logs
 from unregistered_encoding import process_images
 
 pytesseract.pytesseract.tesseract_cmd = r'G:\Program Files\Tesseract-OCR\tesseract.exe'
@@ -207,8 +209,8 @@ class SSystem(ttk.Frame):
 
         # Check if the "Home" tab is selected, enable face recognition
         if current_tab_index == 0:
-            self.face_recognition_enabled = True
-            self.license_recognition_enabled = True
+            self.face_recognition_enabled = False
+            self.license_recognition_enabled = False
 
         elif current_tab_index == 1:
             self.face_recognition_enabled = False
@@ -270,7 +272,7 @@ class SSystem(ttk.Frame):
         # Start updating the time and date label
         self.update_time_date(time_date_label)
 
-        self.daily_logs(plate_frame)
+        daily_logs(plate_frame)
 
         self.camera_border_color1 = 'white'
         self.camera_border_color2 = 'white'
@@ -576,7 +578,7 @@ class SSystem(ttk.Frame):
                 camera_label.configure(image=face_photo, borderwidth=1, relief="solid")
 
                 try:
-                    current_face = face_recognition.face_locations(face_cam, number_of_times_to_upsample=0, model="cnn")
+                    current_face = face_recognition.face_locations(face_cam, number_of_times_to_upsample=0)
                     current_encode = face_recognition.face_encodings(face_cam, current_face)
                     print("ENCODING 1")
 
@@ -1046,40 +1048,6 @@ class SSystem(ttk.Frame):
     def register_driver(self):
         return
 
-    def daily_logs(self, plate_frame):
-
-        colors = ttk.Style().colors
-
-        custom_style = ttk.Style()
-        custom_style.configure("Custom.Treeview", font=("Helvetica", 12))
-
-        coldata = [
-            {"text": "Name", "stretch": False},
-            {"text": "Type", "stretch": False},
-            {"text": "ID number", "stretch": False},
-            {"text": "Plate number", "stretch": False},
-            {"text": "Phone", "stretch": False},
-            {"text": "Date", "stretch": False},
-            {"text": "Time in", "stretch": False},
-        ]
-
-        rowdata = [list(row) for row in database.fetch_daily_logs()]
-
-        self.table_view = Tableview(
-            master=plate_frame,
-            coldata=coldata,
-            rowdata=rowdata,
-            paginated=True,
-            searchable=True,
-            stripecolor=None,
-            autoalign=True,
-            bootstyle=PRIMARY,
-        )
-        default_font = nametofont("TkDefaultFont")
-        default_font.configure(size=10)
-        plate_frame.option_add("*Font", default_font)
-
-        self.table_view.pack(fill=BOTH, expand=YES, padx=10, pady=5)
 
     def not_match(self):
 

@@ -1,4 +1,5 @@
 import base64
+import database
 import datetime
 
 import cv2
@@ -22,6 +23,9 @@ DEFAULT_BG_PATH = "images/wmsubg.png"
 img = None
 filename = None
 page_count = 0
+
+conn = sqlite3.connect('drivers.db')
+c = conn.cursor()
 
 
 def create_driver(parent_tab):
@@ -111,37 +115,39 @@ def create_driver(parent_tab):
         driver_vehicle_color = vehicle_color_entry.get()
 
         # Save driver's information
-        driver_data = {
-            'name': drivers_name,
-            'type': drivers_type,
-            'id_number': int(drivers_id),
-            'phone': int(driver_phone),
-        }
-        db.child('Drivers').child(drivers_id).set(driver_data)
+        # Check if the driver with the given ID already exists in the database
+        c.execute('SELECT * FROM drivers WHERE id_number = ?', (int(drivers_id),))
+        existing_driver = c.fetchone()
 
-        # Check if the vehicle exists in Vehicles node
-        vehicle_data = db.child('Vehicles').child(driver_plate).get().val()
+        if existing_driver:
+            # Driver already exists, update the information
+            c.execute('UPDATE drivers SET name=?, type=?, phone=? WHERE id_number=?',
+                      (drivers_name, drivers_type, int(driver_phone), int(drivers_id)))
+        else:
+            # Driver doesn't exist, insert a new record
+            c.execute('INSERT INTO drivers (id_number, name, type, phone) VALUES (?, ?, ?, ?)',
+                      (int(drivers_id), drivers_name, drivers_type, int(driver_phone)))
+
+        # Check if the vehicle exists in Vehicles table
+        c.execute('SELECT * FROM vehicles WHERE plate_number = ?', (driver_plate,))
+        vehicle_data = c.fetchone()
+
         if vehicle_data is None:
+            # Vehicle doesn't exist, insert a new record
             vehicle_data = {
                 'plate_number': driver_plate,
                 'vehicle_color': driver_vehicle_color,
                 'vehicle_type': driver_vehicle_type,
-                'drivers': {drivers_id: True}
             }
-        else:
-            vehicle_data['drivers'][drivers_id] = True
-        db.child('Vehicles').child(driver_plate).set(vehicle_data)
+            c.execute('INSERT INTO vehicles (plate_number, vehicle_color, vehicle_type) VALUES (?, ?, ?)',
+                      (vehicle_data['plate_number'], vehicle_data['vehicle_color'], vehicle_data['vehicle_type']))
 
-        if driver_data:
-            # Convert the image to bytes
-            _, buffer = cv2.imencode('.png', img)
-            img_bytes = buffer.tobytes()
+        # Save the association between the driver and the vehicle in driver_vehicle table
+        c.execute('INSERT INTO driver_vehicle (driver_id, plate_number) VALUES (?, ?)',
+                  (int(drivers_id), vehicle_data['plate_number']))
 
-            cloud_filename = f"driver images/{drivers_id}.png"
-            pyre_storage.child(cloud_filename).put(img_bytes)
-
-        date = datetime.date.today().strftime("%Y-%m-%d")
-
+        # Commit the changes and close the connection
+        conn.commit()
         tree_view.insert_row(index=0,
                              values=[drivers_name, type, drivers_id, driver_phone, driver_plate, driver_vehicle_type,
                                      driver_vehicle_color, date])
