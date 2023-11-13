@@ -6,6 +6,7 @@ import datetime
 # from firebase_admin import credentials, storage
 import sqlite3
 
+
 # cred = credentials.Certificate("serviceAccountKey.json")
 # firebase_admin.initialize_app(cred, {
 #     'storageBucket': "wmsusecuritysystem.appspot.com",
@@ -55,8 +56,8 @@ def fetch_drivers_and_vehicles():
     c.execute('''
         SELECT d.name, d.type, d.id_number, d.phone, GROUP_CONCAT(v.plate_number, ', ') AS authorized_vehicles, d.date
         FROM drivers d
-        LEFT JOIN driver_vehicle dv ON d.id_number = dv.driver_id
-        LEFT JOIN vehicles v ON dv.plate_number = v.plate_number
+        JOIN driver_vehicle dv ON d.id_number = dv.driver_id
+        JOIN vehicles v ON dv.plate_number = v.plate_number
         GROUP BY d.id_number
     ''')
 
@@ -233,8 +234,8 @@ def fetch_drivers_data(plate_number):
 
     return drivers_data
 
-def fetch_vehicles_data(id_number):
 
+def fetch_vehicles_data(id_number):
     # Connect to the SQLite database
     conn = sqlite3.connect('drivers.db')
     c = conn.cursor()
@@ -284,6 +285,92 @@ def insert_logs(id_number, plate_number, date, time_in, time_out, time_in_status
     conn.close()
 
 
+# def delete(driver_id, plate_number):
+#     conn = sqlite3.connect('drivers.db')
+#     c = conn.cursor()
+#
+#     # Corrected DELETE statement
+#     c.execute("DELETE FROM driver_vehicle WHERE driver_id = ? AND plate_number = ?;", (driver_id, plate_number))
+#
+#     conn.commit()
+#     conn.close()
+#
+#
+#
+# ids = 111111
+# plate = 'ABC1122'
+# delete(ids, plate)
+
+
+import sqlite3
+
+# def delete(driver_id):
+#     conn = sqlite3.connect('drivers.db')
+#     c = conn.cursor()
+#
+#     # Corrected DELETE statement
+#     c.execute("DELETE FROM vehicles WHERE plate_number = ?;", (driver_id,))
+#
+#     conn.commit()
+#     conn.close()
+#
+# # Example usage
+# ids = 'AAN1122'
+# delete(ids)
+
+
+import sqlite3
+from prettytable import PrettyTable
+
+conn = sqlite3.connect('drivers.db')
+c = conn.cursor()
+
+# Retrieve and display the "drivers" table
+c.execute("SELECT * FROM drivers;")
+driver_rows = c.fetchall()
+
+driver_table = PrettyTable(["driver_id", "name", "id_number", "type", "phone", "date"])
+driver_table.align = "l"  # Left-align the data
+
+for row in driver_rows:
+    driver_table.add_row(row)
+
+# Retrieve and display the "vehicles" table
+c.execute("SELECT * FROM vehicles;")
+vehicle_rows = c.fetchall()
+
+vehicle_table = PrettyTable(["plate_number", "vehicle_color", "vehicle_type", "date"])
+vehicle_table.align = "l"  # Left-align the data
+
+for row in vehicle_rows:
+    vehicle_table.add_row(row)
+
+# Retrieve and display the "driver_vehicle" table
+c.execute("SELECT * FROM driver_vehicle;")
+driver_vehicle_rows = c.fetchall()
+
+driver_vehicle_table = PrettyTable(["driver_id", "plate_number"])
+driver_vehicle_table.align = "l"  # Left-align the data
+
+for row in driver_vehicle_rows:
+    driver_vehicle_table.add_row(row)
+
+c.execute("SELECT * FROM daily_logs;")
+daily_logs = c.fetchall()
+
+print(daily_logs)
+
+# Print the tables
+print("Drivers Table:")
+print(driver_table)
+
+print("\nVehicles Table:")
+print(vehicle_table)
+
+print("\nDriver_Vehicle Table:")
+print(driver_vehicle_table)
+
+#
 # # Connect to the SQLite database
 # conn = sqlite3.connect('drivers.db')
 # c = conn.cursor()

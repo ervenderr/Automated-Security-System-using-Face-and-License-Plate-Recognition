@@ -1,4 +1,6 @@
 import base64
+import os
+
 import database
 import datetime
 
@@ -20,18 +22,22 @@ profile_icon = None
 DEFAULT_PROFILE_ICON_PATH = "images/Profile_Icon.png"
 DEFAULT_BG_PATH = "images/wmsubg.png"
 
-img = None
-filename = None
+date = datetime.date.today().strftime("%Y-%m-%d")
+ph_tz = pytz.timezone('Asia/Manila')
+current_time = datetime.datetime.now(tz=ph_tz).strftime("%H:%M:%S")
+
 page_count = 0
 
 conn = sqlite3.connect('drivers.db')
 c = conn.cursor()
 
+img = None
+copied_img_file = None
 
 def create_driver(parent_tab):
-    def selectPic():
 
-        global img, filename
+    def selectPic():
+        global img
 
         # Open a connection to the default camera
         cap = cv2.VideoCapture(0)
@@ -52,7 +58,7 @@ def create_driver(parent_tab):
             # Capture an image when the 'Space' key is pressed
             if cv2.waitKey(1) & 0xFF == ord(' '):
                 img = frame
-                img = cv2.resize(img, (250, 250), interpolation=cv2.INTER_AREA)
+                img = cv2.resize(img, (200, 200), interpolation=cv2.INTER_AREA)
                 filename = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)  # Convert from BGR to RGB for PIL
                 img_pil = Image.fromarray(filename)
                 img_pil_tk = ImageTk.PhotoImage(img_pil)
@@ -65,7 +71,6 @@ def create_driver(parent_tab):
                 driver_image_label.image = default_profile_icon
                 driver_image_label.config(image=driver_image_label.image)
 
-        cap.release()
         cv2.destroyAllWindows()
 
     def update_time_date(label):
@@ -89,74 +94,77 @@ def create_driver(parent_tab):
         {"text": "Date", "stretch": True},
     ]
 
-    rowdata = []
-    for driver_info in data_logs:
-        driver_name, dtype, id_number, phone, authorized_vehicles, date = driver_info
-        rowdata.append([driver_name, dtype, id_number, phone, authorized_vehicles, date])
-
-    # table 2
-    coldata2 = [
-        {"text": "Plate number", "stretch": True},
-        {"text": "Vehicle type", "stretch": True},
-        {"text": "Vehicle color", "stretch": True},
-        {"text": "Driver's ID", "stretch": True},
-        {"text": "Date", "stretch": True},
-    ]
-
-    rowdata2 = []
+    rowdata = [list(row) for row in database.fetch_drivers_and_vehicles()]
 
     def save_driver():
         drivers_id = id_entry.get()
-        drivers_name = name_entry.get()
         drivers_type = type_entry.get()
+        drivers_name = name_entry.get()
         driver_phone = phone_entry.get()
         driver_plate = plate_entry.get()
         driver_vehicle_type = vehicle_type_entry.get()
         driver_vehicle_color = vehicle_color_entry.get()
 
-        # Save driver's information
-        # Check if the driver with the given ID already exists in the database
-        c.execute('SELECT * FROM drivers WHERE id_number = ?', (int(drivers_id),))
-        existing_driver = c.fetchone()
+        # # Save driver's information
+        # # Check if the driver with the given ID already exists in the database
+        # existing_driver = fetch_driver(drivers_id)
+        # print('existing_driver:', existing_driver)
+        #
+        # if existing_driver:
+        #     # Driver already exists, update the information
+        #     c.execute('UPDATE drivers SET id_number=?, name=?, type=?, phone=?, date=? WHERE id_number=?',
+        #               (drivers_id, drivers_name, drivers_type, driver_phone, date, drivers_id))
+        # else:
+        #     # Driver doesn't exist, insert a new record
+        #     c.execute('INSERT INTO drivers (id_number, name, type, phone, date) VALUES (?, ?, ?, ?, ?)',
+        #               (drivers_id, drivers_name, drivers_type, driver_phone, date))
+        #
+        # # Check if the vehicle exists in Vehicles table
+        # vehicle_data = fetch_vehicle(driver_plate)
+        # print('vehicle_data:', vehicle_data)
+        #
+        # if vehicle_data:
+        #     # Driver already exists, update the information
+        #     c.execute('UPDATE vehicles SET plate_number=?, vehicle_color=?, vehicle_type=?, date=? WHERE plate_number=?',
+        #               (driver_plate, driver_vehicle_color, driver_vehicle_type, date, driver_plate))
+        # else:
+        #     # Vehicle doesn't exist, insert a new record
+        #     c.execute('INSERT INTO vehicles (plate_number, vehicle_color, vehicle_type, date) VALUES (?, ?, ?, ?)',
+        #               (driver_plate, driver_vehicle_color, driver_vehicle_type, date))
+        #
+        # # Save the association between the driver and the vehicle in driver_vehicle table
+        # c.execute('SELECT * FROM driver_vehicle WHERE driver_id = ? AND plate_number = ?',
+        #           (drivers_id, driver_plate))
+        # existing_association = c.fetchone()
+        # print('existing_association:', existing_association)
+        #
+        # if existing_association:
+        #     # Update the existing record if the association already exists
+        #     c.execute('UPDATE driver_vehicle SET plate_number = ? WHERE driver_id = ?',
+        #               (driver_plate, drivers_id))
+        # else:
+        #     # Insert a new record if the association doesn't exist
+        #     c.execute('INSERT INTO driver_vehicle (driver_id, plate_number) VALUES (?, ?)',
+        #               (drivers_id, driver_plate))
+        #
+        # # Commit the changes and close the connection
+        # conn.commit()
+        # conn.close()
 
-        if existing_driver:
-            # Driver already exists, update the information
-            c.execute('UPDATE drivers SET name=?, type=?, phone=? WHERE id_number=?',
-                      (drivers_name, drivers_type, int(driver_phone), int(drivers_id)))
-        else:
-            # Driver doesn't exist, insert a new record
-            c.execute('INSERT INTO drivers (id_number, name, type, phone) VALUES (?, ?, ?, ?)',
-                      (int(drivers_id), drivers_name, drivers_type, int(driver_phone)))
+        if img is not None and drivers_id != 'None':
+            # Convert frame to PIL image
+            filename = f'Images/registered driver/{drivers_id}.png'
+            file_image = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            pil_image = Image.fromarray(file_image)
 
-        # Check if the vehicle exists in Vehicles table
-        c.execute('SELECT * FROM vehicles WHERE plate_number = ?', (driver_plate,))
-        vehicle_data = c.fetchone()
+            # Save image
+            pil_image.save(filename)
+            print('pil_image', copied_img_file)
 
-        if vehicle_data is None:
-            # Vehicle doesn't exist, insert a new record
-            vehicle_data = {
-                'plate_number': driver_plate,
-                'vehicle_color': driver_vehicle_color,
-                'vehicle_type': driver_vehicle_type,
-            }
-            c.execute('INSERT INTO vehicles (plate_number, vehicle_color, vehicle_type) VALUES (?, ?, ?)',
-                      (vehicle_data['plate_number'], vehicle_data['vehicle_color'], vehicle_data['vehicle_type']))
-
-        # Save the association between the driver and the vehicle in driver_vehicle table
-        c.execute('INSERT INTO driver_vehicle (driver_id, plate_number) VALUES (?, ?)',
-                  (int(drivers_id), vehicle_data['plate_number']))
-
-        # Commit the changes and close the connection
-        conn.commit()
-        tree_view.insert_row(index=0,
-                             values=[drivers_name, type, drivers_id, driver_phone, driver_plate, driver_vehicle_type,
-                                     driver_vehicle_color, date])
-
-        tree_view2.insert_row(index=0,
-                              values=[driver_plate, driver_vehicle_color, driver_vehicle_type, drivers_id, date])
-
-        tree_view.load_table_data()
-        tree_view2.load_table_data()
+        # selected = tree_view.view.focus()
+        # print(f'selected {selected}')
+        #
+        # tree_view.load_table_data()
 
         clear()
 
@@ -185,120 +193,28 @@ def create_driver(parent_tab):
 
     def update_driver():
 
-        drivers_id = id_entry.get()
-        drivers_name = name_entry.get()
-        drivers_type = type_entry.get()
-        driver_phone = phone_entry.get()
-        driver_plate = plate_entry.get()
-        driver_vehicle_type = vehicle_type_entry.get()
-        driver_vehicle_color = vehicle_color_entry.get()
-
-        # Split input values by comma (assuming they are comma-separated)
-        driver_plates = driver_plate.split(', ')
-        vehicle_types = driver_vehicle_type.split(', ')
-        vehicle_colors = driver_vehicle_color.split(', ')
-
-        if (drivers_id and drivers_name and drivers_type and driver_phone) != '':
-            # Save driver's information
-            driver_data = {
-                'name': drivers_name,
-                'type': drivers_type,
-                'id_number': int(drivers_id),
-                'phone': int(driver_phone),
-            }
-
-            db.child('Drivers').child(drivers_id).set(driver_data)
-            selected = tree_view.view.focus()
-            print(f'selected {selected}')
-
-            row_to_update = tree_view.get_row(iid=selected)
-
-            # Update the values
-            row_to_update.values = [
-                name_entry.get(),
-                type_entry.get(),
-                id_entry.get(),
-                phone_entry.get(),
-                datetime.date.today().strftime("%Y-%m-%d")
-            ]
-            row_to_update.refresh()
-
-            if driver_data and img is not None:
-                # Convert the image to bytes
-                _, buffer = cv2.imencode('.png', img)
-                img_bytes = buffer.tobytes()
-
-                cloud_filename = f"driver images/{drivers_id}.png"
-                pyre_storage.child(cloud_filename).put(img_bytes)
-
-        if (driver_plate and driver_vehicle_type and driver_vehicle_color) != '':
-            # Iterate through the lists
-            for i in range(len(driver_plates)):
-                driver_plate_value = driver_plates[i]
-                vehicle_type_value = vehicle_types[i]
-                vehicle_color_value = vehicle_colors[i]
-
-                # Check if the vehicle exists in the database
-                vehicle_data = db.child('Vehicles').child(driver_plate_value).get().val()
-
-                if not vehicle_data:
-                    # Create a new vehicle entry
-                    vehicle_data = {
-                        'plate_number': driver_plate_value,
-                        'vehicle_color': vehicle_color_value,
-                        'vehicle_type': vehicle_type_value,
-                        'drivers': {}
-                    }
-
-                # Add the driver to the vehicle's "drivers" field
-                vehicle_data['drivers'][drivers_id] = True
-
-                # Save the vehicle data in the database with the updated "drivers" field
-                db.child('Vehicles').child(driver_plate_value).set(vehicle_data)
-
-            selected2 = tree_view2.view.focus()
-            print(f'selected2 {selected2}')
-
-            # Get the row object
-            row_to_update2 = tree_view2.get_row(iid=selected2)
-
-            row_to_update2.values = [
-                plate_entry.get(),
-                vehicle_color_entry.get(),
-                vehicle_type_entry.get(),
-                vehicle_drivers_entry.get(),
-                datetime.date.today().strftime("%Y-%m-%d")
-            ]
-
-            # Refresh the row
-            row_to_update2.refresh()
-
-        # Other steps like clearing entries, showing toast etc
-
-        clear()
-
-        toast = ToastNotification(
-            title="Success",
-            message="Driver Updated",
-            duration=3000,
-        )
-
-        toast.show_toast()
-
-        print("Driver Updated")
+        pass
 
     def delete_driver():
         pass
 
     def selected_driver_row(e):
+        global copied_img_file
+        global driver_image
 
         id_entry.delete(0, END)
         name_entry.delete(0, END)
         type_entry.delete(0, END)
-        # plate_entry.delete(0, END)
+        plate_entry.delete(0, END)
         phone_entry.delete(0, END)
-        # vehicle_type_entry.delete(0, END)
-        # vehicle_color_entry.delete(0, END)
+        vehicle_type_entry.delete(0, END)
+        vehicle_color_entry.delete(0, END)
+
+        logs_data = fetch_all_logs()
+
+        # Iterate through the data and print the name
+        for log_entry in logs_data:
+            print("Name:", log_entry[0])
 
         selected_indices = tree_view.view.selection()  # Get the selected indices
         print('selected_indices: ', selected_indices)
@@ -307,57 +223,60 @@ def create_driver(parent_tab):
         values = tree_view.view.item(selected, 'values')
 
         id_nums = values[2]
+
         if len(id_nums) < 5:
             # Add leading zeros to make it 5 characters long
             id_nums = id_nums.zfill(5)
 
-        name_entry.insert(0, values[0])
-        type_entry.insert(0, values[1])
-        id_entry.insert(0, values[2])
-        # plate_entry.insert(0, values[4])
-        phone_entry.insert(0, values[3])
-        # vehicle_type_entry.insert(0, values[5])
-        # vehicle_color_entry.insert(0, values[6])
+        plate_nums = values[3]
 
-        print("id: ", id_nums)
+        print(f'id_nums: {id_nums}')
+        print(f'plate_nums: {plate_nums}')
 
-        bucket = storage.bucket()
-        blob = bucket.blob(f'driver images/{id_nums}.png')
-        array = np.frombuffer(blob.download_as_string(), np.uint8)
-        img_driver = cv2.imdecode(array, cv2.COLOR_BGR2RGB)
+        driver_info = fetch_driver(id_nums)
+        vehicle_info = fetch_vehicle(plate_nums)
 
-        driver_image = Image.fromarray(img_driver)
-        driver_image = driver_image.resize((250, 250), Image.Resampling.LANCZOS)
+        print(driver_info)
+        print(vehicle_info)
 
-        # Convert color channels from BGR to RGB
-        driver_image = Image.merge("RGB", driver_image.split()[::-1])
+        if driver_info is not None:
 
-        driver_image = ImageTk.PhotoImage(driver_image)
+            name_entry.insert(0, values[0])
+            type_entry.insert(0, values[1])
+            id_entry.insert(0, values[2])
+            phone_entry.insert(0, values[3])
 
+            if id_nums != '0None':
+                file_path = f'Images/registered driver/{id_nums}.png'
+            else:
+                file_path = f'Images/unregistered driver/{plate_nums}.jpg'
+
+            non_driver_image = Image.open(file_path)
+
+            copied_img_file = non_driver_image.copy()
+
+            driver_image = non_driver_image.resize((200, 200), Image.Resampling.LANCZOS)
+
+            driver_image = ImageTk.PhotoImage(driver_image)
+
+            driver_image_label.image = driver_image
+            driver_image_label.config(image=driver_image_label.image)
+            print(driver_image)
+
+        if plate_nums != '0None':
+            for log_entry in vehicle_info:
+                plate_entry.insert(0, log_entry[0])
+                vehicle_type_entry.insert(0, log_entry[1])
+                vehicle_color_entry.insert(0, log_entry[2])
+
+        if plate_nums == '0None':
+            plate_entry.insert(0, values[3])
+
+        driver_image_label.config(image=driver_image)
         driver_image_label.image = driver_image
-        driver_image_label.config(image=driver_image_label.image)
 
     def selected_vehicle_row(e):
-
-        vehicle_drivers_entry.delete(0, END)
-        plate_entry.delete(0, END)
-        vehicle_type_entry.delete(0, END)
-        vehicle_color_entry.delete(0, END)
-
-        selected_indices = tree_view2.view.selection()  # Get the selected indices
-        print('selected_indices: ', selected_indices)
-
-        selected = tree_view2.view.focus()
-        values = tree_view2.view.item(selected, 'values')
-
-        plate_nums = values[0]
-
-        vehicle_drivers_entry.insert(0, values[3])
-        plate_entry.insert(0, values[0])
-        vehicle_type_entry.insert(0, values[1])
-        vehicle_color_entry.insert(0, values[2])
-
-        print("id: ", plate_nums)
+        pass
 
     def remove_id():
         pass
@@ -420,26 +339,9 @@ def create_driver(parent_tab):
     table_frame.grid_rowconfigure(1, weight=1)
     table_frame.grid_columnconfigure(0, weight=1)
 
-    registered_label_text = ttk.Label(table_frame, text="REGISTERED VEHICLE",
-                                      width=50, font=("Arial", 20, "bold"))
-    registered_label_text.grid(row=3, column=0, sticky="nsew", pady=20)
-
-    tree_view2 = Tableview(
-        master=table_frame,
-        coldata=coldata2,
-        rowdata=rowdata2,
-        paginated=True,
-        searchable=True,
-        bootstyle=PRIMARY,
-        stripecolor=None,
-        autoalign=False,
-    )
-    tree_view2.grid(row=4, column=0, sticky="nsw")
-    tree_view2.load_table_data()
-
     # Profile icon label
     default_profile_icon_image = Image.open(DEFAULT_PROFILE_ICON_PATH)
-    default_profile_icon_image = default_profile_icon_image.resize((250, 250), Image.Resampling.LANCZOS)
+    default_profile_icon_image = default_profile_icon_image.resize((200, 200), Image.Resampling.LANCZOS)
     default_profile_icon = ImageTk.PhotoImage(default_profile_icon_image)
 
     # Replace profile_icon_label with driver_image_label
@@ -457,7 +359,8 @@ def create_driver(parent_tab):
 
     type_label = ttk.Label(profile_driver_frame, text="Type:")
     type_label.pack(padx=5, pady=5, fill=BOTH)
-    type_entry = ttk.Entry(profile_driver_frame, font=('Helvetica', 13))
+    category = ["Staff", "Faculty", "Independents", "Graduate Students"]  # Replace with your options
+    type_entry = ttk.Combobox(master=profile_driver_frame, font=('Helvetica', 13), values=category)
     type_entry.pack(padx=5, pady=5, fill=BOTH)
 
     id_label = ttk.Label(profile_driver_frame, text="ID:")
@@ -543,7 +446,7 @@ def create_driver(parent_tab):
     delete_button.pack(side=LEFT, padx=10, pady=10)
 
     style = ttk.Style()
-    style.configure('Treeview', font=('Helvetica', 12), rowheight=40)
+    style.configure('Treeview', rowheight=400)
+    style.configure('Treeview', font=('Helvetica', 12))
 
     tree_view.view.bind("<ButtonRelease-1>", selected_driver_row)
-    tree_view2.view.bind("<ButtonRelease-1>", selected_vehicle_row)

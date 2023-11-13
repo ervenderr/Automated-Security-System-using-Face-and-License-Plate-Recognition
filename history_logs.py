@@ -24,12 +24,16 @@ DEFAULT_BG_PATH = "images/wmsubg.png"
 conn = sqlite3.connect('drivers.db')
 c = conn.cursor()
 
-img = None
-filename = None
+date = datetime.date.today().strftime("%Y-%m-%d")
+ph_tz = pytz.timezone('Asia/Manila')
+current_time = datetime.datetime.now(tz=ph_tz).strftime("%H:%M:%S")
 
+captured_image = None
+copied_img_file = None
 
 def history_logs(parent_tab):
-    def selectPic():
+    def hist_selectPic():
+        global captured_image
 
         # Open a connection to the default camera
         cap = cv2.VideoCapture(1)
@@ -49,9 +53,9 @@ def history_logs(parent_tab):
 
             # Capture an image when the 'Space' key is pressed
             if cv2.waitKey(1) & 0xFF == ord(' '):
-                img = frame
-                img = cv2.resize(img, (200, 200), interpolation=cv2.INTER_AREA)
-                filename = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)  # Convert from BGR to RGB for PIL
+                captured_image = frame
+                images = cv2.resize(captured_image, (200, 200), interpolation=cv2.INTER_AREA)
+                filename = cv2.cvtColor(images, cv2.COLOR_BGR2RGB)  # Convert from BGR to RGB for PIL
                 img_pil = Image.fromarray(filename)
                 img_pil_tk = ImageTk.PhotoImage(img_pil)
                 driver_image_label.image = img_pil_tk
@@ -59,11 +63,10 @@ def history_logs(parent_tab):
                 break
 
             else:
-                img = None
+                images = None
                 driver_image_label.image = default_profile_icon
                 driver_image_label.config(image=driver_image_label.image)
 
-        cap.release()
         cv2.destroyAllWindows()
 
     def update_time_date(label):
@@ -85,7 +88,7 @@ def history_logs(parent_tab):
 
     rowdata = [list(row) for row in database.fetch_all_logs()]
 
-    def save_driver():
+    def hist_save_driver():
         drivers_id = id_entry.get()
         drivers_type = type_entry.get()
         drivers_name = name_entry.get()
@@ -100,12 +103,12 @@ def history_logs(parent_tab):
 
         if existing_driver:
             # Driver already exists, update the information
-            c.execute('UPDATE drivers SET name=?, type=?, phone=? WHERE id_number=?',
-                      (drivers_name, drivers_type, driver_phone, drivers_id))
+            c.execute('UPDATE drivers SET name=?, type=?, phone=?, date=? WHERE id_number=?',
+                      (drivers_name, drivers_type, driver_phone, drivers_id, date))
         else:
             # Driver doesn't exist, insert a new record
-            c.execute('INSERT INTO drivers (id_number, name, type, phone) VALUES (?, ?, ?, ?)',
-                      (drivers_id, drivers_name, drivers_type, driver_phone))
+            c.execute('INSERT INTO drivers (id_number, name, type, phone, date) VALUES (?, ?, ?, ?, ?)',
+                      (drivers_id, drivers_name, drivers_type, driver_phone, date))
 
         # Check if the vehicle exists in Vehicles table
         vehicle_data = fetch_vehicle(driver_plate)
@@ -138,16 +141,15 @@ def history_logs(parent_tab):
         conn.commit()
         conn.close()
 
-        if img is not None:
-            local_storage_path = "Images/registered driver"
+        if captured_image is not None and drivers_id != 'None':
+            # Convert frame to PIL image
+            filename = f'Images/registered driver/{drivers_id}.png'
+            file_image = cv2.cvtColor(captured_image, cv2.COLOR_BGR2RGB)
+            pil_image = Image.fromarray(file_image)
 
-            frame_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-            local_filename = os.path.join(local_storage_path, f"{drivers_id}.png")
-            cv2.imwrite(local_filename, frame_rgb)
-
-        date = datetime.date.today().strftime("%Y-%m-%d")
-        ph_tz = pytz.timezone('Asia/Manila')
-        current_time = datetime.datetime.now(tz=ph_tz).strftime("%H:%M:%S")
+            # Save image
+            pil_image.save(filename)
+            print('pil_image', copied_img_file)
 
         selected = tree_view.view.focus()
         print(f'selected {selected}')
@@ -198,6 +200,7 @@ def history_logs(parent_tab):
 
     def selected_row(e):
         global driver_image
+        global copied_img_file
         id_entry.delete(0, END)
         name_entry.delete(0, END)
         type_entry.delete(0, END)
@@ -248,13 +251,17 @@ def history_logs(parent_tab):
             else:
                 file_path = f'Images/unregistered driver/{plate_nums}.jpg'
 
-            driver_image = Image.open(file_path)
-            driver_image = driver_image.resize((200, 200), Image.Resampling.LANCZOS)
+            non_driver_image = Image.open(file_path)
+
+            copied_img_file = non_driver_image.copy()
+
+            driver_image = non_driver_image.resize((200, 200), Image.Resampling.LANCZOS)
 
             driver_image = ImageTk.PhotoImage(driver_image)
 
             driver_image_label.image = driver_image
             driver_image_label.config(image=driver_image_label.image)
+            print(driver_image)
 
         if plate_nums != '0None':
             for log_entry in vehicle_info:
@@ -388,8 +395,8 @@ def history_logs(parent_tab):
     crud_frame.grid_columnconfigure(0, weight=1)
 
     # Add CRUD buttons
-    create_button = ttk.Button(crud_frame, text="SAVE", command=save_driver, bootstyle=SUCCESS)
-    take_photo = ttk.Button(crud_frame, text="TAKE A PHOTO", command=save_driver, bootstyle=SUCCESS)
+    create_button = ttk.Button(crud_frame, text="SAVE", command=hist_save_driver, bootstyle=SUCCESS)
+    take_photo = ttk.Button(crud_frame, text="TAKE A PHOTO", command=hist_selectPic, bootstyle=SUCCESS)
     clear_button = ttk.Button(crud_frame, text="CLEAR", command=clear, bootstyle=PRIMARY)
     delete_button = ttk.Button(crud_frame, text="DELETE", command=delete_driver, bootstyle=DANGER)
 
@@ -399,6 +406,6 @@ def history_logs(parent_tab):
     clear_button.pack(side=LEFT, padx=10, pady=10)
     delete_button.pack(side=LEFT, padx=10, pady=10)
 
-    take_photo['command'] = selectPic
+    take_photo['command'] = hist_selectPic
 
     tree_view.view.bind("<ButtonRelease-1>", selected_row)
