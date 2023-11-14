@@ -242,7 +242,7 @@ def fetch_vehicles_data(id_number):
 
     # Query the "vehicles" table to retrieve vehicles associated with the specified driver
     c.execute('''
-        SELECT v.plate_number, v.vehicle_type, v.vehicle_color
+        SELECT v.plate_number, v.vehicle_type, v.vehicle_color, v.date
         FROM vehicles v
         JOIN driver_vehicle dv ON v.plate_number = dv.plate_number
         WHERE dv.driver_id = ?

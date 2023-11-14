@@ -18,6 +18,8 @@ import EncodeGenerator
 from database import *
 from tkinter import filedialog
 
+from tables import *
+
 profile_icon = None
 DEFAULT_PROFILE_ICON_PATH = "images/Profile_Icon.png"
 DEFAULT_BG_PATH = "images/wmsubg.png"
@@ -27,15 +29,18 @@ ph_tz = pytz.timezone('Asia/Manila')
 current_time = datetime.datetime.now(tz=ph_tz).strftime("%H:%M:%S")
 
 page_count = 0
+id_number = None
 
 conn = sqlite3.connect('drivers.db')
 c = conn.cursor()
 
 img = None
 copied_img_file = None
+id_nums = None
 
 def create_driver(parent_tab):
 
+    global id_number, id_nums
     def selectPic():
         global img
 
@@ -58,7 +63,7 @@ def create_driver(parent_tab):
             # Capture an image when the 'Space' key is pressed
             if cv2.waitKey(1) & 0xFF == ord(' '):
                 img = frame
-                img = cv2.resize(img, (200, 200), interpolation=cv2.INTER_AREA)
+                img = cv2.resize(img, (250, 250), interpolation=cv2.INTER_AREA)
                 filename = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)  # Convert from BGR to RGB for PIL
                 img_pil = Image.fromarray(filename)
                 img_pil_tk = ImageTk.PhotoImage(img_pil)
@@ -105,51 +110,51 @@ def create_driver(parent_tab):
         driver_vehicle_type = vehicle_type_entry.get()
         driver_vehicle_color = vehicle_color_entry.get()
 
-        # # Save driver's information
-        # # Check if the driver with the given ID already exists in the database
-        # existing_driver = fetch_driver(drivers_id)
-        # print('existing_driver:', existing_driver)
-        #
-        # if existing_driver:
-        #     # Driver already exists, update the information
-        #     c.execute('UPDATE drivers SET id_number=?, name=?, type=?, phone=?, date=? WHERE id_number=?',
-        #               (drivers_id, drivers_name, drivers_type, driver_phone, date, drivers_id))
-        # else:
-        #     # Driver doesn't exist, insert a new record
-        #     c.execute('INSERT INTO drivers (id_number, name, type, phone, date) VALUES (?, ?, ?, ?, ?)',
-        #               (drivers_id, drivers_name, drivers_type, driver_phone, date))
-        #
-        # # Check if the vehicle exists in Vehicles table
-        # vehicle_data = fetch_vehicle(driver_plate)
-        # print('vehicle_data:', vehicle_data)
-        #
-        # if vehicle_data:
-        #     # Driver already exists, update the information
-        #     c.execute('UPDATE vehicles SET plate_number=?, vehicle_color=?, vehicle_type=?, date=? WHERE plate_number=?',
-        #               (driver_plate, driver_vehicle_color, driver_vehicle_type, date, driver_plate))
-        # else:
-        #     # Vehicle doesn't exist, insert a new record
-        #     c.execute('INSERT INTO vehicles (plate_number, vehicle_color, vehicle_type, date) VALUES (?, ?, ?, ?)',
-        #               (driver_plate, driver_vehicle_color, driver_vehicle_type, date))
-        #
-        # # Save the association between the driver and the vehicle in driver_vehicle table
-        # c.execute('SELECT * FROM driver_vehicle WHERE driver_id = ? AND plate_number = ?',
-        #           (drivers_id, driver_plate))
-        # existing_association = c.fetchone()
-        # print('existing_association:', existing_association)
-        #
-        # if existing_association:
-        #     # Update the existing record if the association already exists
-        #     c.execute('UPDATE driver_vehicle SET plate_number = ? WHERE driver_id = ?',
-        #               (driver_plate, drivers_id))
-        # else:
-        #     # Insert a new record if the association doesn't exist
-        #     c.execute('INSERT INTO driver_vehicle (driver_id, plate_number) VALUES (?, ?)',
-        #               (drivers_id, driver_plate))
-        #
-        # # Commit the changes and close the connection
-        # conn.commit()
-        # conn.close()
+        # Save driver's information
+        # Check if the driver with the given ID already exists in the database
+        existing_driver = fetch_driver(drivers_id)
+        print('existing_driver:', existing_driver)
+
+        if existing_driver:
+            # Driver already exists, update the information
+            c.execute('UPDATE drivers SET id_number=?, name=?, type=?, phone=?, date=? WHERE id_number=?',
+                      (drivers_id, drivers_name, drivers_type, driver_phone, date, drivers_id))
+        else:
+            # Driver doesn't exist, insert a new record
+            c.execute('INSERT INTO drivers (id_number, name, type, phone, date) VALUES (?, ?, ?, ?, ?)',
+                      (drivers_id, drivers_name, drivers_type, driver_phone, date))
+
+        # Check if the vehicle exists in Vehicles table
+        vehicle_data = fetch_vehicle(driver_plate)
+        print('vehicle_data:', vehicle_data)
+
+        if vehicle_data:
+            # Driver already exists, update the information
+            c.execute('UPDATE vehicles SET plate_number=?, vehicle_color=?, vehicle_type=?, date=? WHERE plate_number=?',
+                      (driver_plate, driver_vehicle_color, driver_vehicle_type, date, driver_plate))
+        else:
+            # Vehicle doesn't exist, insert a new record
+            c.execute('INSERT INTO vehicles (plate_number, vehicle_color, vehicle_type, date) VALUES (?, ?, ?, ?)',
+                      (driver_plate, driver_vehicle_color, driver_vehicle_type, date))
+
+        # Save the association between the driver and the vehicle in driver_vehicle table
+        c.execute('SELECT * FROM driver_vehicle WHERE driver_id = ? AND plate_number = ?',
+                  (drivers_id, driver_plate))
+        existing_association = c.fetchone()
+        print('existing_association:', existing_association)
+
+        if existing_association:
+            # Update the existing record if the association already exists
+            c.execute('UPDATE driver_vehicle SET plate_number = ? WHERE driver_id = ?',
+                      (driver_plate, drivers_id))
+        else:
+            # Insert a new record if the association doesn't exist
+            c.execute('INSERT INTO driver_vehicle (driver_id, plate_number) VALUES (?, ?)',
+                      (drivers_id, driver_plate))
+
+        # Commit the changes and close the connection
+        conn.commit()
+        conn.close()
 
         if img is not None and drivers_id != 'None':
             # Convert frame to PIL image
@@ -161,10 +166,10 @@ def create_driver(parent_tab):
             pil_image.save(filename)
             print('pil_image', copied_img_file)
 
-        # selected = tree_view.view.focus()
-        # print(f'selected {selected}')
-        #
-        # tree_view.load_table_data()
+        selected = tree_view.view.focus()
+        print(f'selected {selected}')
+
+        tree_view.load_table_data()
 
         clear()
 
@@ -198,9 +203,10 @@ def create_driver(parent_tab):
     def delete_driver():
         pass
 
-    def selected_driver_row(e):
+    def selected_driver_row():
         global copied_img_file
         global driver_image
+        global id_nums
 
         id_entry.delete(0, END)
         name_entry.delete(0, END)
@@ -255,7 +261,7 @@ def create_driver(parent_tab):
 
             copied_img_file = non_driver_image.copy()
 
-            driver_image = non_driver_image.resize((200, 200), Image.Resampling.LANCZOS)
+            driver_image = non_driver_image.resize((250, 250), Image.Resampling.LANCZOS)
 
             driver_image = ImageTk.PhotoImage(driver_image)
 
@@ -276,7 +282,38 @@ def create_driver(parent_tab):
         driver_image_label.image = driver_image
 
     def selected_vehicle_row(e):
-        pass
+        global copied_img_file
+        global id_nums
+
+        plate_entry.delete(0, END)
+        vehicle_type_entry.delete(0, END)
+        vehicle_color_entry.delete(0, END)
+
+        logs_data = fetch_all_logs()
+
+        # Iterate through the data and print the name
+        for log_entry in logs_data:
+            print("Name:", log_entry[0])
+
+        selected_indices = tree_view.view.selection()  # Get the selected indices
+        print('selected_indices: ', selected_indices)
+
+        selected = tree_view.view.focus()
+        values = tree_view.view.item(selected, 'values')
+
+        plate_nums = values[0]
+
+        print(f'plate_nums: {plate_nums}')
+
+        vehicle_info = fetch_vehicle(plate_nums)
+
+        print(vehicle_info)
+
+        if vehicle_info is not None:
+
+            plate_entry.insert(0, values[0])
+            vehicle_type_entry.insert(0, values[1])
+            vehicle_color_entry.insert(0, values[2])
 
     def remove_id():
         pass
@@ -285,7 +322,7 @@ def create_driver(parent_tab):
     parent_tab.grid_rowconfigure(0, weight=1)
 
     # Profile driver frame
-    profile_driver_frame = ttk.Frame(parent_tab, width=200)
+    profile_driver_frame = ttk.Frame(parent_tab, width=250)
     profile_driver_frame.grid(row=0, column=1, sticky="nsew", padx=20, pady=20)
     profile_driver_frame.grid_rowconfigure(0, weight=1)
     profile_driver_frame.grid_columnconfigure(0, weight=1)
@@ -339,9 +376,65 @@ def create_driver(parent_tab):
     table_frame.grid_rowconfigure(1, weight=1)
     table_frame.grid_columnconfigure(0, weight=1)
 
+
+    # Daily logs table
+    table_frame2 = ttk.Frame(parent_tab)
+
+    pages = [table_frame, table_frame2]
+
+    def profile_page(e):
+        selected_driver_row()
+        global page_count, id_number
+
+        id_number = id_entry.get()
+
+        if not page_count > len(pages) - 2:
+            for page in pages:
+                page.grid_forget()
+
+            page_count += 1
+            page = pages[page_count]
+            page.grid(row=0, column=3, sticky="nsew", padx=20, pady=20)
+            table_frame2.grid_rowconfigure(0, weight=1)
+            table_frame2.grid_columnconfigure(0, weight=1)
+
+            back_text = "Return"
+
+            back_button = ttk.Button(table_frame2, text=back_text, command=list_profile_page, width=10,
+                                     bootstyle=DANGER)
+            back_button.grid(row=0, column=0, padx=10, pady=10, sticky="nw")
+
+            export_vehicles = driver_authorized_vehicles(table_frame2, id_nums)
+
+            driver_logs_summarized(table_frame2, id_nums)
+
+            print(f'export_vehicles {export_vehicles}')
+
+            export_vehicles.view.bind("<ButtonRelease-1>", selected_vehicle_row)
+
+    def list_profile_page():
+        global page_count
+
+        if not page_count == 2:
+            for page in pages:
+                page.grid_forget()
+
+            page_count -= 1
+            page = pages[page_count]
+            page.grid(row=0, column=3, sticky="nsew", padx=20, pady=20)
+            table_frame.grid_rowconfigure(0, weight=1)
+            table_frame.grid_columnconfigure(0, weight=1)
+
+        clear()
+
+
+    # Configure row and column weights for plate_frame
+    table_frame2.grid_rowconfigure(0, weight=1)
+    table_frame2.grid_columnconfigure(0, weight=1)
+
     # Profile icon label
     default_profile_icon_image = Image.open(DEFAULT_PROFILE_ICON_PATH)
-    default_profile_icon_image = default_profile_icon_image.resize((200, 200), Image.Resampling.LANCZOS)
+    default_profile_icon_image = default_profile_icon_image.resize((250, 250), Image.Resampling.LANCZOS)
     default_profile_icon = ImageTk.PhotoImage(default_profile_icon_image)
 
     # Replace profile_icon_label with driver_image_label
@@ -409,28 +502,6 @@ def create_driver(parent_tab):
     crud_frame.grid_rowconfigure(0, weight=1)
     crud_frame.grid_columnconfigure(0, weight=1)
 
-    # Daily logs table
-    table_frame2 = ttk.Frame(parent_tab)
-
-    instruction_text = "Driver Details: "
-    instruction = ttk.Label(table_frame2, text=instruction_text, width=50)
-    instruction.pack(fill=X, pady=10)
-
-    pages = [table_frame, table_frame2]
-
-    def profile_page():
-        global page_count
-
-        if not page_count > len(pages) - 2:
-            for page in pages:
-                page.grid_forget()
-
-            page_count += 1
-            page = pages[page_count]
-            page.grid(row=0, column=3, sticky="nsew", padx=20, pady=20)
-            table_frame2.grid_rowconfigure(0, weight=1)
-            table_frame2.grid_columnconfigure(0, weight=1)
-
     # Add CRUD buttons
     create_button = ttk.Button(crud_frame, text="SAVE", command=save_driver, bootstyle=SUCCESS)
     take_photo = ttk.Button(crud_frame, text="TAKE A PHOTO", command=selectPic, bootstyle=SUCCESS)
@@ -449,4 +520,33 @@ def create_driver(parent_tab):
     style.configure('Treeview', rowheight=400)
     style.configure('Treeview', font=('Helvetica', 12))
 
-    tree_view.view.bind("<ButtonRelease-1>", selected_driver_row)
+    tree_view.view.bind("<ButtonRelease-1>", profile_page)
+    # table_view_vehicles.bind("<ButtonRelease-1>", selected_vehicle_row)
+
+    def on_row_click(e):
+        selected_item = tree_view_logs.selection()[0]
+
+        # Look up time values for selected row
+        id_number = tree_view_logs.item(selected_item)['values'][2]
+        times = fetch_times_for_id(id_number)
+
+        # Create label to display times
+        time_label = ttk.Label(tree_view_logs, text="\n".join(times))
+
+        # Set as row detail
+        tree_view_logs.set_row_detail(selected_item, time_label)
+
+    # Fetch time values for given id
+    def fetch_times_for_id(id_number):
+        times = []
+        # Query database
+        c.execute("""SELECT time_in, time_out FROM daily_logs  
+                  WHERE id_number = ?""", (id_number,))
+
+        for row in c.fetchall():
+            times.append(row[0])
+            times.append(row[1])
+
+        return times
+
+

@@ -288,8 +288,8 @@ class SSystem(ttk.Frame):
         self.camera_label2 = ttk.Label(camera_container, borderwidth=3, relief="solid", style="license_border.TLabel")
         self.camera_label2.pack(side=RIGHT)
 
-        self.start_camera_feed(0, self.camera_label1)
-        self.start_camera_feed(1, self.camera_label2)
+        self.start_camera_feed(2, self.camera_label1)
+        self.start_camera_feed(2, self.camera_label2)
 
         # Separator line between camera feeds and driver details
         separator = ttk.Separator(container_frame, orient=VERTICAL)
