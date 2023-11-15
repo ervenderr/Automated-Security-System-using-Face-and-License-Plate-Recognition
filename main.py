@@ -277,15 +277,17 @@ class SSystem(ttk.Frame):
         self.camera_border_color1 = 'white'
         self.camera_border_color2 = 'white'
 
-        self.border_style.configure("face_border.TLabel", bordercolor=self.camera_border_color1)
-        self.border_style.configure("license_border.TLabel", bordercolor=self.camera_border_color2)
+        self.border_style.configure("face_border.TLabel", bordercolor=self.camera_border_color1,
+                                    sunkencost=2)  # Adjust the sunkencost value as needed
+        self.border_style.configure("license_border.TLabel", bordercolor=self.camera_border_color2,
+                                    sunkencost=2)  # Adjust the sunkencost value as needed
 
         # Label to display the first camera feed
-        self.camera_label1 = ttk.Label(camera_container, borderwidth=3, relief="solid", style="face_border.TLabel")
+        self.camera_label1 = ttk.Label(camera_container, borderwidth=5, relief="solid", style="face_border.TLabel")
         self.camera_label1.pack(side=LEFT, padx=(0, 10))
 
         # Label to display the second camera feed
-        self.camera_label2 = ttk.Label(camera_container, borderwidth=3, relief="solid", style="license_border.TLabel")
+        self.camera_label2 = ttk.Label(camera_container, borderwidth=5, relief="solid", style="license_border.TLabel")
         self.camera_label2.pack(side=RIGHT)
 
         self.start_camera_feed(2, self.camera_label1)

@@ -6,6 +6,8 @@ import datetime
 # from firebase_admin import credentials, storage
 import sqlite3
 
+import pytz
+
 
 # cred = credentials.Certificate("serviceAccountKey.json")
 # firebase_admin.initialize_app(cred, {
@@ -116,6 +118,28 @@ def fetch_daily_logs():
         WHERE dl.date = ?
         ORDER BY time(dl.time_in) DESC
     ''', (today,))
+
+    data_logs = c.fetchall()
+    conn.close()
+    return data_logs
+
+
+def fetch_indi_logs(date, id_number):
+    conn = sqlite3.connect('drivers.db')
+    c = conn.cursor()
+
+    # Fetch data from daily_logs, drivers, and vehicles tables
+    c.execute('''
+        SELECT 
+            dl.plate_number,
+            dl.time_in,
+            dl.time_out
+        FROM daily_logs dl
+        LEFT JOIN drivers d ON dl.id_number = d.id_number
+        LEFT JOIN vehicles v ON dl.plate_number = v.plate_number
+        WHERE dl.date = ? AND dl.id_number = ?
+        ORDER BY time(dl.time_in) DESC
+    ''', (date, id_number))
 
     data_logs = c.fetchall()
     conn.close()
@@ -270,8 +294,9 @@ def are_associated(driver_id, plate_number):
 
 
 # INSERT QUERIES:
-
-
+ph_tz = pytz.timezone('Asia/Manila')
+datess = datetime.date.today().strftime("%Y-%m-%d")
+current_time = datetime.datetime.now(tz=ph_tz).strftime("%H:%M:%S")
 def insert_logs(id_number, plate_number, date, time_in, time_out, time_in_status, is_registered):
     conn = sqlite3.connect('drivers.db')
     c = conn.cursor()
@@ -283,6 +308,7 @@ def insert_logs(id_number, plate_number, date, time_in, time_out, time_in_status
 
     conn.commit()
     conn.close()
+
 
 
 # def delete(driver_id, plate_number):
@@ -326,10 +352,10 @@ conn = sqlite3.connect('drivers.db')
 c = conn.cursor()
 
 # Retrieve and display the "drivers" table
-c.execute("SELECT * FROM drivers;")
+c.execute("SELECT * FROM daily_logs;")
 driver_rows = c.fetchall()
 
-driver_table = PrettyTable(["driver_id", "name", "id_number", "type", "phone", "date"])
+driver_table = PrettyTable(['ewan', 'id_number', 'plate_number', 'date', 'time_in', 'time_out', 'time_in_status', 'is_registered'])
 driver_table.align = "l"  # Left-align the data
 
 for row in driver_rows:

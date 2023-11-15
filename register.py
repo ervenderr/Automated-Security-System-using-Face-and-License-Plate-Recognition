@@ -19,6 +19,7 @@ from database import *
 from tkinter import filedialog
 
 from tables import *
+from tkinter import ttk
 
 profile_icon = None
 DEFAULT_PROFILE_ICON_PATH = "images/Profile_Icon.png"
@@ -84,7 +85,6 @@ def create_driver(parent_tab):
         label.config(text=current_time)
         parent_tab.after(1000, lambda: update_time_date(label))
 
-    colors = ttk.Style().colors
 
     drivers_data = fetch_all_driver()
     vehicles_data = fetch_all_vehicle()
@@ -92,9 +92,9 @@ def create_driver(parent_tab):
 
     coldata = [
         {"text": "Name", "stretch": True},
-        {"text": "Type", "stretch": True},
-        {"text": "ID number", "stretch": True, "width": 150},
-        {"text": "Phone", "stretch": True, "width": 150},
+        {"text": "Category", "stretch": True},
+        {"text": "ID number", "stretch": True},
+        {"text": "Phone", "stretch": True},
         {"text": "Authorized Vehicles", "stretch": True},
         {"text": "Date", "stretch": True},
     ]
@@ -369,6 +369,9 @@ def create_driver(parent_tab):
         autoalign=True,
     )
     tree_view.grid(row=1, column=0, rowspan=2, sticky="nsew")
+    tree_view.grid_rowconfigure(0, weight=1)
+    tree_view.grid_rowconfigure(1, weight=1)
+    tree_view.grid_columnconfigure(0, weight=1)
     tree_view.load_table_data()
 
     # Configure row and column weights for plate_frame
@@ -406,11 +409,14 @@ def create_driver(parent_tab):
 
             export_vehicles = driver_authorized_vehicles(table_frame2, id_nums)
 
-            driver_logs_summarized(table_frame2, id_nums)
+            export_logs = driver_logs_summarized(table_frame2, id_nums)
 
             print(f'export_vehicles {export_vehicles}')
 
             export_vehicles.view.bind("<ButtonRelease-1>", selected_vehicle_row)
+
+            print(tree_view.winfo_class())
+
 
     def list_profile_page():
         global page_count
@@ -450,7 +456,7 @@ def create_driver(parent_tab):
     name_entry = ttk.Entry(profile_driver_frame, font=('Helvetica', 13))
     name_entry.pack(padx=5, pady=5, fill=BOTH)
 
-    type_label = ttk.Label(profile_driver_frame, text="Type:")
+    type_label = ttk.Label(profile_driver_frame, text="Category:")
     type_label.pack(padx=5, pady=5, fill=BOTH)
     category = ["Staff", "Faculty", "Independents", "Graduate Students"]  # Replace with your options
     type_entry = ttk.Combobox(master=profile_driver_frame, font=('Helvetica', 13), values=category)
@@ -517,36 +523,10 @@ def create_driver(parent_tab):
     delete_button.pack(side=LEFT, padx=10, pady=10)
 
     style = ttk.Style()
-    style.configure('Treeview', rowheight=400)
-    style.configure('Treeview', font=('Helvetica', 12))
+    style.configure("Treeview", rowheight=30, font=('Helvetica', 14, 'bold'))
 
     tree_view.view.bind("<ButtonRelease-1>", profile_page)
     # table_view_vehicles.bind("<ButtonRelease-1>", selected_vehicle_row)
 
-    def on_row_click(e):
-        selected_item = tree_view_logs.selection()[0]
-
-        # Look up time values for selected row
-        id_number = tree_view_logs.item(selected_item)['values'][2]
-        times = fetch_times_for_id(id_number)
-
-        # Create label to display times
-        time_label = ttk.Label(tree_view_logs, text="\n".join(times))
-
-        # Set as row detail
-        tree_view_logs.set_row_detail(selected_item, time_label)
-
-    # Fetch time values for given id
-    def fetch_times_for_id(id_number):
-        times = []
-        # Query database
-        c.execute("""SELECT time_in, time_out FROM daily_logs  
-                  WHERE id_number = ?""", (id_number,))
-
-        for row in c.fetchall():
-            times.append(row[0])
-            times.append(row[1])
-
-        return times
 
 

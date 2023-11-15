@@ -77,7 +77,7 @@ def history_logs(parent_tab):
 
     coldata = [
         {"text": "Name", "stretch": True},
-        {"text": "Type", "stretch": True},
+        {"text": "Category", "stretch": True},
         {"text": "ID number", "stretch": True, "width": 150},
         {"text": "Plate number", "stretch": True},
         {"text": "Phone", "stretch": True, "width": 150},
@@ -353,7 +353,7 @@ def history_logs(parent_tab):
     name_entry = ttk.Entry(profile_driver_frame, font=('Helvetica', 13))
     name_entry.pack(padx=5, pady=5, fill=BOTH)
 
-    type_label = ttk.Label(profile_driver_frame, text="Type:")
+    type_label = ttk.Label(profile_driver_frame, text="Category:")
     type_label.pack(padx=5, pady=5, fill=BOTH)
     category = ["Staff", "Faculty", "Independents", "Graduate Students"]  # Replace with your options
     type_entry = ttk.Combobox(master=profile_driver_frame, font=('Helvetica', 13), values=category)

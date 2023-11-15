@@ -8,21 +8,16 @@ from ttkbootstrap.tableview import Tableview
 
 import database
 
-tree_view = None
 tree_view_logs = None
 
 
 def daily_logs(plate_frame):
-    global tree_view
 
     colors = ttk.Style().colors
 
-    custom_style = ttk.Style()
-    custom_style.configure("Custom.Treeview", font=("Helvetica", 12))
-
     coldata = [
         {"text": "Name", "stretch": False},
-        {"text": "Type", "stretch": False},
+        {"text": "Category", "stretch": False},
         {"text": "ID number", "stretch": False},
         {"text": "Plate number", "stretch": False},
         {"text": "Phone", "stretch": False},
@@ -50,7 +45,7 @@ def daily_logs(plate_frame):
 
 
 def driver_logs_summarized(table_frame2, id_number):
-    global tree_view_logs
+    global export_logs
 
     colors = ttk.Style().colors
 
@@ -76,14 +71,11 @@ def driver_logs_summarized(table_frame2, id_number):
     data_logs = c.fetchall()
     conn.close()
 
-    custom_style = ttk.Style()
-    custom_style.configure("Custom.Treeview", font=("Helvetica", 12))
-
     coldata_logs = [
         {"text": "Date", "stretch": True},
         {"text": "Vehicle", "stretch": True},
-        {"text": "Entry Count", "stretch": True, "width": 150},
-        {"text": "Exit Count", "stretch": True, "width": 150},
+        {"text": "Entry Count", "stretch": True},
+        {"text": "Exit Count", "stretch": True},
     ]
 
     rowdata_logs = [list(row) for row in data_logs]
@@ -108,22 +100,38 @@ def driver_logs_summarized(table_frame2, id_number):
 
     tree_view_logs.load_table_data()
 
+    export_logs = tree_view_logs
+
+    tree_view_logs.view.tag_configure('TButton', background='darkblue', foreground='white')
+
+    for item in tree_view_logs.view.get_children():
+        # Extracting the corresponding row data for the current item
+        row_index = tree_view_logs.view.index(item)
+        row_data = rowdata_logs[row_index]
+
+        # Fetching individual logs for the current date and id_number
+        indi_logs = database.fetch_indi_logs(row_data[0], id_number)
+
+        # Inserting the children with time_in and time_out values
+        for indi_log in indi_logs:
+            tree_view_logs.view.insert(item, 'end', values=('', '', indi_log[1], indi_log[2]), tags=('TButton',))
+
+    return export_logs
+
 
 def driver_authorized_vehicles(table_frame2, id_number):
+    global export_vehicles
 
     colors = ttk.Style().colors
 
     vehicles = database.fetch_vehicles_data(id_number)
     print(f'vehicles: {vehicles}')
 
-    custom_style = ttk.Style()
-    custom_style.configure("Custom.Treeview", font=("Helvetica", 12))
-
     coldata_logs = [
         {"text": "Plate number", "stretch": True},
         {"text": "Vehicle Type", "stretch": True},
-        {"text": "Vehicle Color", "stretch": True, "width": 150},
-        {"text": "Date ", "stretch": True, "width": 150},
+        {"text": "Vehicle Color", "stretch": True},
+        {"text": "Date ", "stretch": True},
     ]
 
     rowdata_vehicles = [list(row) for row in database.fetch_vehicles_data(id_number)]
@@ -156,3 +164,34 @@ def driver_authorized_vehicles(table_frame2, id_number):
     export_vehicles = tree_view_vehicles
 
     return export_vehicles
+
+
+def on_row_click(event):
+    selected_item = export_vehicles.view.selection()[0]
+
+    # Lookup time values for row
+    date = tree_view_logs.item(selected_item)['values'][0]
+    times = fetch_times(date)
+
+    # Create label to display times
+    time_label = ttk.Label(tree_view_logs, text="\n".join(times))
+
+    # Set as row detail
+    tree_view_logs.set_row_detail(selected_item, time_label)
+
+
+# Fetch time values
+def fetch_times(date):
+    conn = sqlite3.connect('drivers.db')
+    c = conn.cursor()
+    times = []
+
+    c.execute("""SELECT time_in, time_out 
+              FROM daily_logs 
+              WHERE date = ?""", (date,))
+
+    for row in c.fetchall():
+        times.append(row[0])
+        times.append(row[1])
+
+    return times
