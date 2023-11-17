@@ -1,5 +1,6 @@
 import pickle
 import threading
+import time
 from collections import Counter
 from tkinter.font import nametofont
 
@@ -241,9 +242,15 @@ class SSystem(ttk.Frame):
         time_date_frame.grid_columnconfigure(0, weight=1)
         self.border_style = Style(theme="superhero")
 
+        card_frame = ttk.Frame(camera_frame)
+        card_frame.grid(row=3, column=0, sticky="nsew", padx=20, pady=10)
+        card_frame.grid_rowconfigure(0, weight=1)
+        card_frame.grid_columnconfigure(0, weight=1)
+
+
         # Frame for displaying plate number
         plate_frame = ttk.LabelFrame(camera_frame, text='Daily logs', borderwidth=1, relief=RIDGE)
-        plate_frame.grid(row=3, column=0, sticky="nsew", pady=10)
+        plate_frame.grid(row=4, column=0, sticky="nsew", pady=10)
         plate_frame.grid_rowconfigure(0, weight=1)
         plate_frame.grid_columnconfigure(0, weight=1)
 
@@ -272,24 +279,51 @@ class SSystem(ttk.Frame):
         # Start updating the time and date label
         self.update_time_date(time_date_label)
 
+        # Card for Total Entries
+        total_entries_card = ttk.Frame(card_frame, borderwidth=1, relief=SOLID)
+        total_entries_card.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
+        total_entries_card.grid_rowconfigure(0, weight=1)
+        total_entries_card.grid_columnconfigure(0, weight=1)
+
+        total_entries_label = ttk.Label(total_entries_card, text="Total Entries", font=("Helvetica", 16, "bold"))
+        total_entries_label.grid(row=0, column=0, pady=(5, 0))
+
+        self.total_entries_value = ttk.Label(total_entries_card, text="0", font=("Helvetica", 24))
+        self.total_entries_value.grid(row=1, column=0, pady=(0, 5))
+
+        # Card for Total Visitors Entered
+        total_visitors_card = ttk.Frame(card_frame, borderwidth=1, relief=SOLID, width=50)
+        total_visitors_card.grid(row=0, column=1, padx=10, pady=10, sticky="nsew")
+        total_visitors_card.grid_rowconfigure(0, weight=1)
+        total_visitors_card.grid_columnconfigure(0, weight=1)
+
+        total_visitors_label = ttk.Label(total_visitors_card, text="Total Visitors Entered",
+                                         font=("Helvetica", 16, "bold"))
+        total_visitors_label.grid(row=0, column=0, pady=(5, 0))
+
+        self.total_visitors_value = ttk.Label(total_visitors_card, text="0", font=("Helvetica", 24))
+        self.total_visitors_value.grid(row=1, column=0, pady=(0, 5))
+
         daily_logs(plate_frame)
 
         self.camera_border_color1 = 'white'
         self.camera_border_color2 = 'white'
 
-        self.border_style.configure("face_border.TLabel", bordercolor=self.camera_border_color1)
-        self.border_style.configure("license_border.TLabel", bordercolor=self.camera_border_color2)
+        self.border_style.configure("face_border.TLabel", bordercolor=self.camera_border_color1,
+                                    sunkencost=2)  # Adjust the sunkencost value as needed
+        self.border_style.configure("license_border.TLabel", bordercolor=self.camera_border_color2,
+                                    sunkencost=2)  # Adjust the sunkencost value as needed
 
         # Label to display the first camera feed
-        self.camera_label1 = ttk.Label(camera_container, borderwidth=3, relief="solid", style="face_border.TLabel")
+        self.camera_label1 = ttk.Label(camera_container, borderwidth=5, relief="solid", style="face_border.TLabel")
         self.camera_label1.pack(side=LEFT, padx=(0, 10))
 
         # Label to display the second camera feed
-        self.camera_label2 = ttk.Label(camera_container, borderwidth=3, relief="solid", style="license_border.TLabel")
+        self.camera_label2 = ttk.Label(camera_container, borderwidth=5, relief="solid", style="license_border.TLabel")
         self.camera_label2.pack(side=RIGHT)
 
-        self.start_camera_feed(0, self.camera_label1)
-        self.start_camera_feed(1, self.camera_label2)
+        self.start_camera_feed(2, self.camera_label1)
+        self.start_camera_feed(2, self.camera_label2)
 
         # Separator line between camera feeds and driver details
         separator = ttk.Separator(container_frame, orient=VERTICAL)
@@ -565,6 +599,7 @@ class SSystem(ttk.Frame):
         self.update_exit_camera(self.cap, camera_label, camera_id)
 
     def update_camera(self, cap, camera_label, camera_id):
+        global face_start
         ret, frame = cap.read()
 
         if ret:
@@ -578,6 +613,7 @@ class SSystem(ttk.Frame):
                 camera_label.configure(image=face_photo, borderwidth=1, relief="solid")
 
                 try:
+                    face_start = time.time()
                     current_face = face_recognition.face_locations(face_cam, number_of_times_to_upsample=0)
                     current_encode = face_recognition.face_encodings(face_cam, current_face)
                     print("ENCODING 1")
@@ -625,9 +661,13 @@ class SSystem(ttk.Frame):
 
                     if associated:
                         self.update_driver_details()
+                        end = time.time()
+                        print("Authorized recognition time: ", end - face_start)
                     else:
                         self.not_match()
                         print("NOT MATCH")
+                        end = time.time()
+                        print("Unmatched recognition time: ", end - face_start)
 
                 elif ((self.face_counter and self.license_counter) == 1
                       and not self.license_recognized and not self.face_recognized):
@@ -643,6 +683,8 @@ class SSystem(ttk.Frame):
 
                     self.face_counter += 1
                     self.license_counter += 1
+                    end = time.time()
+                    print("UnAuthorized recognition time: ", end - face_start)
 
                 elif ((self.face_counter and self.license_counter) == 1
                       and self.license_recognized and not self.face_recognized):
@@ -662,6 +704,9 @@ class SSystem(ttk.Frame):
                     self.update_driver_details()
                     print("Face not registered")
 
+                    end = time.time()
+                    print("Face UnAuthorized recognition time: ", end - face_start)
+
                 elif ((self.face_counter and self.license_counter) == 1
                       and not self.license_recognized and self.face_recognized):
 
@@ -680,6 +725,8 @@ class SSystem(ttk.Frame):
 
                     self.update_driver_details()
                     print("License not registered")
+                    end = time.time()
+                    print("License UnAuthorized recognition time: ", end - face_start)
 
         # Convert the frame to a PhotoImage (compatible with tkinter) and display it
         photo = ImageTk.PhotoImage(image=Image.fromarray(frame))
@@ -796,15 +843,15 @@ class SSystem(ttk.Frame):
                     license_plate_region = license_cam[int(y1):int(y2), int(x1):int(x2)]
 
                     try:
-                        resize_test_license_plate = cv2.resize(
+                        resize_license_plate = cv2.resize(
                             license_plate_region, None, fx=2, fy=2,
                             interpolation=cv2.INTER_CUBIC)
 
-                        grayscale_resize_test_license_plate = cv2.cvtColor(
-                            resize_test_license_plate, cv2.COLOR_BGR2GRAY)
+                        grayscale_resize_license_plate = cv2.cvtColor(
+                            resize_license_plate, cv2.COLOR_BGR2GRAY)
 
                         gaussian_blur_license_plate = cv2.GaussianBlur(
-                            grayscale_resize_test_license_plate, (5, 5), 0)
+                            grayscale_resize_license_plate, (5, 5), 0)
 
                         config = ('--oem 3 -l eng --psm 6 -c '
                                   'tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789')

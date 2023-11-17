@@ -187,7 +187,7 @@ def authorized_driver(parent_tab, authorized_plate):
     name_entry = ttk.Entry(profile_driver_frame, font=('Helvetica', 13))
     name_entry.pack(padx=5, pady=5, fill=BOTH)
 
-    type_label = ttk.Label(profile_driver_frame, text="Type:")
+    type_label = ttk.Label(profile_driver_frame, text="Category:")
     type_label.pack(padx=5, pady=5, fill=BOTH)
     type_entry = ttk.Entry(profile_driver_frame, font=('Helvetica', 13))
     type_entry.pack(padx=5, pady=5, fill=BOTH)
