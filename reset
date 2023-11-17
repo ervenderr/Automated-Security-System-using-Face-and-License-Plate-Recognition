@@ -1,0 +1,162 @@
+[33mcommit 0193a4101dbc864cc1176922ae96c3dd9b9dc22f[m[33m ([m[1;36mHEAD -> [m[1;32mmain[m[33m)[m
+Author: ervenderr <ervenidjad12@gmail.com>
+Date:   Sat Nov 18 05:20:42 2023 +0800
+
+    .
+
+[33mcommit f9d63eb9b9109da656efe14caced5dc6de3ad093[m
+Author: ervenderr <ervenidjad12@gmail.com>
+Date:   Sat Nov 18 05:17:22 2023 +0800
+
+    .
+
+[33mcommit 99bb305db64566be73ddc00e17aa6fa8fa6d6a4a[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m
+Author: ervenderr <ervenidjad12@gmail.com>
+Date:   Thu Nov 16 02:40:40 2023 +0800
+
+    debugging
+
+[33mcommit 58f68e75c169576fc1271fe3a3298eefbf2dc922[m
+Author: ervenderr <ervenidjad12@gmail.com>
+Date:   Tue Nov 14 22:20:12 2023 +0800
+
+    regis
+
+[33mcommit e2863dcb0a1b53c790374fa3ea3753e72955cdd1[m
+Author: ervenderr <ervenidjad12@gmail.com>
+Date:   Mon Nov 13 19:33:01 2023 +0800
+
+    hist, regis
+
+[33mcommit 5952c1c434cb69ef3a5ba9d8c7dd53e18b9a7b8e[m
+Author: ervenderr <ervenidjad12@gmail.com>
+Date:   Sun Nov 12 22:54:03 2023 +0800
+
+    history logs update
+
+[33mcommit ca91e6bb276371b32cffb5d7da336c1a53d503e5[m
+Author: ervenderr <ervenidjad12@gmail.com>
+Date:   Thu Nov 9 20:47:31 2023 +0800
+
+    commits
+
+[33mcommit 3f3954f88d67932f690465843d3aa4f5dbb76d74[m
+Author: ervenderr <ervenidjad12@gmail.com>
+Date:   Mon Nov 6 20:36:51 2023 +0800
+
+    basta progress
+
+[33mcommit 6d5c2e0f3135cda3c1f185a4a5dd3f47a8627df7[m
+Author: ervenderr <ervenidjad12@gmail.com>
+Date:   Thu Oct 26 02:36:30 2023 +0800
+
+    optimizing main, register, history_logs
+
+[33mcommit 0af1872088b9e08d90157eeac74cb440ce45a783[m
+Author: ervenderr <ervenidjad12@gmail.com>
+Date:   Wed Oct 18 06:03:56 2023 +0800
+
+    updates
+
+[33mcommit dca4a72ee7e894bd2b250531a6151e228f62aacf[m
+Author: ervenderr <ervenidjad12@gmail.com>
+Date:   Wed Oct 18 06:00:02 2023 +0800
+
+    updates
+
+[33mcommit 3f72daf0eb10c92bc50780e6b45d3aca071af33f[m
+Author: ervenderr <ervenidjad12@gmail.com>
+Date:   Wed Oct 18 05:43:43 2023 +0800
+
+    updates
+
+[33mcommit d3a6d174ae168fe39e3ad24e43d4384bd550aad9[m
+Author: ervenderr <ervenidjad12@gmail.com>
+Date:   Mon Oct 16 05:46:14 2023 +0800
+
+    updating main
+
+[33mcommit d87bacd16986dc845ffce80bc27afdb4704c4a42[m
+Author: ervenderr <ervenidjad12@gmail.com>
+Date:   Thu Oct 12 15:43:02 2023 +0800
+
+    mains
+
+[33mcommit 6e623763cea3cdc489c277b46c1353e8c36cd44e[m
+Author: ervenderr <ervenidjad12@gmail.com>
+Date:   Tue Oct 10 05:25:08 2023 +0800
+
+    mains
+
+[33mcommit 6f00a259700d03dd4a563747f6c2cfa187b1dcd3[m
+Author: ervenderr <ervenidjad12@gmail.com>
+Date:   Mon Oct 9 17:50:05 2023 +0800
+
+    unregistered, sqlite
+
+[33mcommit 29685c936a1d5acb50071c54e3ffb8e9e18edf0e[m
+Author: ervenderr <ervenidjad12@gmail.com>
+Date:   Sat Oct 7 13:28:40 2023 +0800
+
+    unauthorized driver/vehicle
+
+[33mcommit 5f80942a7ccc9d21eca72c2513424b782a72f191[m
+Author: ervenderr <ervenidjad12@gmail.com>
+Date:   Wed Oct 4 03:43:18 2023 +0800
+
+    register, license, database
+
+[33mcommit c6b198b8b567e23308b813da9214c0a25820c6d0[m
+Author: ervenderr <ervenidjad12@gmail.com>
+Date:   Sat Sep 30 11:17:19 2023 +0800
+
+    updating main
+
+[33mcommit 0fd35cc0ca87f2c7314589873f24665fb7cd84dd[m
+Author: ervenderr <ervenidjad12@gmail.com>
+Date:   Thu Sep 28 01:02:03 2023 +0800
+
+    tabs and vehicle info
+
+[33mcommit f5c38c9addd63cc790c19022fb88dff7295a4d84[m
+Merge: 10ea6bb 4293418
+Author: ervenderr <ervenidjad12@gmail.com>
+Date:   Wed Sep 27 02:05:55 2023 +0800
+
+    updating main
+
+[33mcommit 10ea6bb9a54617f9cbb88277830e5cfedc4e9053[m
+Author: ervenderr <ervenidjad12@gmail.com>
+Date:   Wed Sep 27 02:00:27 2023 +0800
+
+    updating main
+
+[33mcommit 42934180b91168896ac95e1afb92a92a2087f4d5[m
+Author: ervenderr <ervenidjad12@gmail.com>
+Date:   Mon Sep 25 22:15:06 2023 +0800
+
+    threading for face recognition
+
+[33mcommit 06dc09885cf15a402973f6b10765de919f6276e6[m
+Author: ervenderr <ervenidjad12@gmail.com>
+Date:   Mon Sep 25 22:13:43 2023 +0800
+
+    threading for face recognition
+
+[33mcommit 46d510ecf58734ee2bbed86d4669bd03f13340c7[m
+Author: ervenderr <ervenidjad12@gmail.com>
+Date:   Sat Sep 23 02:53:08 2023 +0800
+
+    updating main
+
+[33mcommit 509c4cf1799716e1a4c59d090e537053f42ce36e[m[33m ([m[1;31morigin/development[m[33m)[m
+Author: ervenderr <ervenidjad12@gmail.com>
+Date:   Sun Sep 17 13:35:27 2023 +0800
+
+    first commit
+
+[33mcommit 8b5adb9bd5e37ba66fdc3b1caa33d3c74a9530eb[m
+Author: Erven Idjad <ervenidjad12@gmail.com>
+Date:   Sun Sep 17 11:56:23 2023 +0800
+
+    Initial commit
