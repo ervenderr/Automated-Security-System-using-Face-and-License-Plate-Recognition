@@ -345,56 +345,56 @@ import sqlite3
 # delete(ids)
 
 
-import sqlite3
-from prettytable import PrettyTable
-
-conn = sqlite3.connect('drivers.db')
-c = conn.cursor()
-
-# Retrieve and display the "drivers" table
-c.execute("SELECT * FROM daily_logs;")
-driver_rows = c.fetchall()
-
-driver_table = PrettyTable(['ewan', 'id_number', 'plate_number', 'date', 'time_in', 'time_out', 'time_in_status', 'is_registered'])
-driver_table.align = "l"  # Left-align the data
-
-for row in driver_rows:
-    driver_table.add_row(row)
-
-# Retrieve and display the "vehicles" table
-c.execute("SELECT * FROM vehicles;")
-vehicle_rows = c.fetchall()
-
-vehicle_table = PrettyTable(["plate_number", "vehicle_color", "vehicle_type", "date"])
-vehicle_table.align = "l"  # Left-align the data
-
-for row in vehicle_rows:
-    vehicle_table.add_row(row)
-
-# Retrieve and display the "driver_vehicle" table
-c.execute("SELECT * FROM driver_vehicle;")
-driver_vehicle_rows = c.fetchall()
-
-driver_vehicle_table = PrettyTable(["driver_id", "plate_number"])
-driver_vehicle_table.align = "l"  # Left-align the data
-
-for row in driver_vehicle_rows:
-    driver_vehicle_table.add_row(row)
-
-c.execute("SELECT * FROM daily_logs;")
-daily_logs = c.fetchall()
-
-print(daily_logs)
-
-# Print the tables
-print("Drivers Table:")
-print(driver_table)
-
-print("\nVehicles Table:")
-print(vehicle_table)
-
-print("\nDriver_Vehicle Table:")
-print(driver_vehicle_table)
+# import sqlite3
+# from prettytable import PrettyTable
+#
+# conn = sqlite3.connect('drivers.db')
+# c = conn.cursor()
+#
+# # Retrieve and display the "drivers" table
+# c.execute("SELECT * FROM daily_logs;")
+# driver_rows = c.fetchall()
+#
+# driver_table = PrettyTable(['ewan', 'id_number', 'plate_number', 'date', 'time_in', 'time_out', 'time_in_status', 'is_registered'])
+# driver_table.align = "l"  # Left-align the data
+#
+# for row in driver_rows:
+#     driver_table.add_row(row)
+#
+# # Retrieve and display the "vehicles" table
+# c.execute("SELECT * FROM vehicles;")
+# vehicle_rows = c.fetchall()
+#
+# vehicle_table = PrettyTable(["plate_number", "vehicle_color", "vehicle_type", "date"])
+# vehicle_table.align = "l"  # Left-align the data
+#
+# for row in vehicle_rows:
+#     vehicle_table.add_row(row)
+#
+# # Retrieve and display the "driver_vehicle" table
+# c.execute("SELECT * FROM driver_vehicle;")
+# driver_vehicle_rows = c.fetchall()
+#
+# driver_vehicle_table = PrettyTable(["driver_id", "plate_number"])
+# driver_vehicle_table.align = "l"  # Left-align the data
+#
+# for row in driver_vehicle_rows:
+#     driver_vehicle_table.add_row(row)
+#
+# c.execute("SELECT * FROM daily_logs;")
+# daily_logs = c.fetchall()
+#
+# print(daily_logs)
+#
+# # Print the tables
+# print("Drivers Table:")
+# print(driver_table)
+#
+# print("\nVehicles Table:")
+# print(vehicle_table)
+#
+# print("\nDriver_Vehicle Table:")
+# print(driver_vehicle_table)
 
 #
 # # Connect to the SQLite database
