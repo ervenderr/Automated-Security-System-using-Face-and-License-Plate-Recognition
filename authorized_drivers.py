@@ -23,7 +23,7 @@ img = None
 filename = None
 
 
-def authorized_driver(parent_tab, authorized_plate):
+def authorized_driver(parent_tab, authorized_plate, authorized_name):
 
     def selectPic():
 
@@ -43,12 +43,7 @@ def authorized_driver(parent_tab, authorized_plate):
         {"text": "Phone", "stretch": True, "width": 150},
     ]
 
-    rowdata = []
-
-    # Populate rowdata with data from the database
-    for driver_info in authorized_drivers:
-        driver_name, dtype, id_number, phone = driver_info
-        rowdata.append([driver_name, dtype, id_number, phone])
+    rowdata = [list(row) for row in authorized_drivers]
 
     def save_driver():
         pass
@@ -144,9 +139,10 @@ def authorized_driver(parent_tab, authorized_plate):
     time_date_label = ttk.Label(time_date_frame, text="",
                                 width=50, font=("Arial", 20, "bold"),
                                 anchor='center')
-
-    registered_label_text = ttk.Label(time_date_frame, text="REGISTERED DRIVER AND VEHICLE",
+    texts = f'AUTHORIZED DRIVERS FOR {authorized_name}'
+    registered_label_text = ttk.Label(time_date_frame, text=texts,
                                       width=50, font=("Arial", 20, "bold"))
+
 
     # Center the label within the time_date_frame
     time_date_label.grid(row=0, column=0, sticky="ew")

@@ -40,14 +40,10 @@ def authorized_vehicle(parent_tab, authorized_id):
         {"text": "Plate number", "stretch": True},
         {"text": "Vehicle type", "stretch": True},
         {"text": "Color", "stretch": True, "width": 150},
+        {"text": "Date", "stretch": True, "width": 150},
     ]
 
-    rowdata = []
-
-    # Populate rowdata with data from the database
-    for vehicle_info in authorized_vehicles:
-        plate_number, vehicle_type, vehicle_color = vehicle_info
-        rowdata.append([plate_number, vehicle_type, vehicle_color])
+    rowdata = [list(rows) for rows in authorized_vehicles]
 
     def save_driver():
         pass
@@ -124,7 +120,8 @@ def authorized_vehicle(parent_tab, authorized_id):
                                 width=50, font=("Arial", 20, "bold"),
                                 anchor='center')
 
-    registered_label_text = ttk.Label(time_date_frame, text="REGISTERED DRIVER AND VEHICLE",
+    texts = f'AUTHORIZED VEHICLES FOR {authorized_id}'
+    registered_label_text = ttk.Label(time_date_frame, text=texts,
                                       width=50, font=("Arial", 20, "bold"))
 
     # Center the label within the time_date_frame

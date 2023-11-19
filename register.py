@@ -169,11 +169,11 @@ def create_driver(parent_tab):
         selected = tree_view.view.focus()
         print(f'selected {selected}')
 
-        tree_view.load_table_data()
-
         clear()
 
         EncodeGenerator.process_encodings()
+
+        tree_view.load_table_data()
 
         toast = ToastNotification(
             title="Success",
@@ -372,7 +372,6 @@ def create_driver(parent_tab):
     tree_view.grid_rowconfigure(0, weight=1)
     tree_view.grid_rowconfigure(1, weight=1)
     tree_view.grid_columnconfigure(0, weight=1)
-    tree_view.load_table_data()
 
     # Configure row and column weights for plate_frame
     table_frame.grid_rowconfigure(0, weight=1)

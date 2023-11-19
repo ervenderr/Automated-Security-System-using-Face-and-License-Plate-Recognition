@@ -297,6 +297,8 @@ def are_associated(driver_id, plate_number):
 ph_tz = pytz.timezone('Asia/Manila')
 datess = datetime.date.today().strftime("%Y-%m-%d")
 current_time = datetime.datetime.now(tz=ph_tz).strftime("%H:%M:%S")
+
+
 def insert_logs(id_number, plate_number, date, time_in, time_out, time_in_status, is_registered):
     conn = sqlite3.connect('drivers.db')
     c = conn.cursor()
@@ -308,7 +310,6 @@ def insert_logs(id_number, plate_number, date, time_in, time_out, time_in_status
 
     conn.commit()
     conn.close()
-
 
 
 # def delete(driver_id, plate_number):
@@ -323,13 +324,13 @@ def insert_logs(id_number, plate_number, date, time_in, time_out, time_in_status
 #
 #
 #
-# ids = 111111
-# plate = 'ABC1122'
+# ids = 113232
+# plate = 'JAW9341'
 # delete(ids, plate)
-
-
-import sqlite3
-
+#
+#
+# import sqlite3
+#
 # def delete(driver_id):
 #     conn = sqlite3.connect('drivers.db')
 #     c = conn.cursor()
@@ -341,71 +342,90 @@ import sqlite3
 #     conn.close()
 #
 # # Example usage
-# ids = 'AAN1122'
+# ids = 'JAW9341'
 # delete(ids)
+#
+# def deleted(driver_id):
+#     conn = sqlite3.connect('drivers.db')
+#     c = conn.cursor()
+#
+#     # Corrected DELETE statement
+#     c.execute("DELETE FROM drivers WHERE id_number = ?;", (driver_id,))
+#
+#     conn.commit()
+#     conn.close()
+#
+# # Example usage
+# ids = 113232
+# deleted(ids)
 
 
-# import sqlite3
-# from prettytable import PrettyTable
-#
-# conn = sqlite3.connect('drivers.db')
-# c = conn.cursor()
-#
-# # Retrieve and display the "drivers" table
-# c.execute("SELECT * FROM daily_logs;")
-# driver_rows = c.fetchall()
-#
-# driver_table = PrettyTable(['ewan', 'id_number', 'plate_number', 'date', 'time_in', 'time_out', 'time_in_status', 'is_registered'])
-# driver_table.align = "l"  # Left-align the data
-#
-# for row in driver_rows:
-#     driver_table.add_row(row)
-#
-# # Retrieve and display the "vehicles" table
-# c.execute("SELECT * FROM vehicles;")
-# vehicle_rows = c.fetchall()
-#
-# vehicle_table = PrettyTable(["plate_number", "vehicle_color", "vehicle_type", "date"])
-# vehicle_table.align = "l"  # Left-align the data
-#
-# for row in vehicle_rows:
-#     vehicle_table.add_row(row)
-#
-# # Retrieve and display the "driver_vehicle" table
-# c.execute("SELECT * FROM driver_vehicle;")
-# driver_vehicle_rows = c.fetchall()
-#
-# driver_vehicle_table = PrettyTable(["driver_id", "plate_number"])
-# driver_vehicle_table.align = "l"  # Left-align the data
-#
-# for row in driver_vehicle_rows:
-#     driver_vehicle_table.add_row(row)
-#
-# c.execute("SELECT * FROM daily_logs;")
-# daily_logs = c.fetchall()
-#
-# print(daily_logs)
-#
-# # Print the tables
-# print("Drivers Table:")
-# print(driver_table)
-#
-# print("\nVehicles Table:")
-# print(vehicle_table)
-#
-# print("\nDriver_Vehicle Table:")
-# print(driver_vehicle_table)
+import sqlite3
+from prettytable import PrettyTable
+
+conn = sqlite3.connect('drivers.db')
+c = conn.cursor()
+
+# Retrieve and display the "drivers" table
+c.execute("SELECT * FROM daily_logs;")
+driver_rows = c.fetchall()
+
+driver_table = PrettyTable(
+    ['ewan', 'id_number', 'plate_number', 'date', 'time_in', 'time_out', 'time_in_status', 'is_registered'])
+driver_table.align = "l"  # Left-align the data
+
+for row in driver_rows:
+    driver_table.add_row(row)
+
+# Retrieve and display the "vehicles" table
+c.execute("SELECT * FROM vehicles;")
+vehicle_rows = c.fetchall()
+
+vehicle_table = PrettyTable(["plate_number", "vehicle_color", "vehicle_type", "date"])
+vehicle_table.align = "l"  # Left-align the data
+
+for row in vehicle_rows:
+    vehicle_table.add_row(row)
+
+# Retrieve and display the "driver_vehicle" table
+c.execute("SELECT * FROM driver_vehicle;")
+driver_vehicle_rows = c.fetchall()
+
+driver_vehicle_table = PrettyTable(["driver_id", "plate_number"])
+driver_vehicle_table.align = "l"  # Left-align the data
+
+for row in driver_vehicle_rows:
+    driver_vehicle_table.add_row(row)
+
+c.execute("SELECT * FROM daily_logs;")
+daily_logs = c.fetchall()
+
+print(daily_logs)
+
+# Print the tables
+print("Drivers Table:")
+print(driver_table)
+
+print("\nVehicles Table:")
+print(vehicle_table)
+
+print("\nDriver_Vehicle Table:")
+print(driver_vehicle_table)
+
 
 #
-# # Connect to the SQLite database
-# conn = sqlite3.connect('drivers.db')
-# c = conn.cursor()
+# def deletelogs(driver_id, plates):
+#     conn = sqlite3.connect('drivers.db')
+#     c = conn.cursor()
 #
-# # Delete all rows from the "daily_logs" table
-# c.execute('DELETE FROM daily_logs')
+#     # Corrected DELETE statement
+#     c.execute("DELETE FROM daily_logs WHERE date = ? AND plate_number = ?;", (driver_id,plates))
 #
-# # Commit the changes
-# conn.commit()
+#     conn.commit()
+#     conn.close()
 #
-# # Close the database connection
-# conn.close()
+#
+# # Example usage
+# ids = '2023-11-18'
+# plate = 'JAW9341'
+# deletelogs(ids,plate)

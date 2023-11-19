@@ -9,39 +9,8 @@ from ttkbootstrap.tableview import Tableview
 import database
 
 tree_view_logs = None
-
-
-def daily_logs(plate_frame):
-
-    colors = ttk.Style().colors
-
-    coldata = [
-        {"text": "Name", "stretch": False},
-        {"text": "Category", "stretch": False},
-        {"text": "ID number", "stretch": False},
-        {"text": "Plate number", "stretch": False},
-        {"text": "Phone", "stretch": False},
-        {"text": "Date", "stretch": False},
-        {"text": "Time in", "stretch": False},
-    ]
-
-    rowdata = [list(row) for row in database.fetch_daily_logs()]
-
-    table_view = Tableview(
-        master=plate_frame,
-        coldata=coldata,
-        rowdata=rowdata,
-        paginated=True,
-        searchable=True,
-        stripecolor=None,
-        autoalign=True,
-        bootstyle=PRIMARY,
-    )
-    default_font = nametofont("TkDefaultFont")
-    default_font.configure(size=10)
-    plate_frame.option_add("*Font", default_font)
-
-    table_view.pack(fill=BOTH, expand=YES, padx=10, pady=5)
+table_views = None
+all_table_logs = None
 
 
 def driver_logs_summarized(table_frame2, id_number):
@@ -195,3 +164,38 @@ def fetch_times(date):
         times.append(row[1])
 
     return times
+
+
+def all_logs(table_frame):
+
+    global all_table_logs
+
+    colors = ttk.Style().colors
+
+    coldata = [
+        {"text": "Name", "stretch": True},
+        {"text": "Category", "stretch": True},
+        {"text": "ID number", "stretch": True, "width": 150},
+        {"text": "Plate number", "stretch": True},
+        {"text": "Phone", "stretch": True, "width": 150},
+        {"text": "Date", "stretch": True, },
+        {"text": "Time in", "stretch": True, },
+        {"text": "Time out", "stretch": True, },
+    ]
+
+    rowdata = [list(row) for row in database.fetch_all_logs()]
+
+    all_table_view = Tableview(
+        master=table_frame,
+        coldata=coldata,
+        rowdata=rowdata,
+        paginated=True,
+        searchable=True,
+        bootstyle=PRIMARY,
+        stripecolor=(),
+        autoalign=True,
+    )
+    all_table_view.grid(row=1, column=0, rowspan=2, sticky="nsew")
+    all_table_view.load_table_data()
+
+    all_table_logs = all_table_view

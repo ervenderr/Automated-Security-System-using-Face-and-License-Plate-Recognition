@@ -394,10 +394,14 @@ def history_logs(parent_tab):
     crud_frame.grid_rowconfigure(0, weight=1)
     crud_frame.grid_columnconfigure(0, weight=1)
 
+    def refresh_table():
+        tree_view.load_table_data()
+        print("TABLE LOADED", tree_view)
+
     # Add CRUD buttons
     create_button = ttk.Button(crud_frame, text="SAVE", command=hist_save_driver, bootstyle=SUCCESS)
     take_photo = ttk.Button(crud_frame, text="TAKE A PHOTO", command=hist_selectPic, bootstyle=SUCCESS)
-    clear_button = ttk.Button(crud_frame, text="CLEAR", command=clear, bootstyle=PRIMARY)
+    clear_button = ttk.Button(crud_frame, text="CLEAR", command=refresh_table, bootstyle=PRIMARY)
     delete_button = ttk.Button(crud_frame, text="DELETE", command=delete_driver, bootstyle=DANGER)
 
     # Pack the buttons

@@ -21,9 +21,11 @@ from ttkbootstrap.icons import Icon
 from ttkbootstrap.validation import add_regex_validation
 from ultralytics import YOLO
 
+import history_log
+import tables
 from authorized_drivers import authorized_driver
 from authorized_vehicle import authorized_vehicle
-from history_logs import *
+from history_log import *
 from register import create_driver
 import queue
 import re
@@ -36,17 +38,15 @@ from ttkbootstrap import Style
 from ttkbootstrap.dialogs import Messagebox
 from database import *
 import pytesseract
-
-from tables import daily_logs
 from unregistered_encoding import process_images
 
-pytesseract.pytesseract.tesseract_cmd = r'G:\Program Files\Tesseract-OCR\tesseract.exe'
+pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
 # reader = easyocr.Reader(['en'], gpu=True)
 # Load the YOLO model
 model_path = os.path.join('.', 'runs', 'detect', 'train', 'weights', 'best.pt')
 lpr_model = YOLO(model_path)
-threshold = 0.35
+threshold = 0.50
 
 frame_queue = queue.Queue()
 
@@ -60,6 +60,21 @@ frame_queue = queue.Queue()
 
 class SSystem(ttk.Frame):
     def __init__(self, master_window):
+
+        self.face_unauthorized = False
+        self.license_unauthorized = False
+        self.license_start = None
+        self.license_count = 0
+        self.total_license_time = 0
+
+        self.face_start = 0
+
+        self.face_count = 0
+        self.total_face_time = 0
+
+        self.overall_count = 0
+        self.overall_time = 0
+        self.overall_start = 0
 
         self.states = ''
         self.current_tab_index = -1
@@ -176,6 +191,12 @@ class SSystem(ttk.Frame):
         self.nav_bar.add(logs_tab, text="HISTORY LOGS")
         self.tab_frames.append(logs_tab)
 
+        scrolled_frame_logs = ScrolledFrame(logs_tab, width=1400, height=700, autohide=True,
+                                             bootstyle='dark round')
+        scrolled_frame_logs.pack(fill=BOTH, expand=True)
+        scrolled_frame_logs.rowconfigure(0, weight=1)
+        scrolled_frame_logs.columnconfigure(0, weight=1)
+
         self.nav_bar.bind("<<NotebookTabChanged>>", self.on_tab_change)
 
         # registration Tab
@@ -190,7 +211,7 @@ class SSystem(ttk.Frame):
 
         self.setup_home_tab(scrolled_frame)
         self.setup_exit_tab(scrolled_exit_frame)
-        self.setup_logs_tab(logs_tab)
+        self.setup_logs_tab(scrolled_frame_logs)
         self.setup_register_tab(scrolled_frame_regis)
 
         self.face_recognized = False
@@ -246,7 +267,6 @@ class SSystem(ttk.Frame):
         card_frame.grid(row=3, column=0, sticky="nsew", padx=20, pady=10)
         card_frame.grid_rowconfigure(0, weight=1)
         card_frame.grid_columnconfigure(0, weight=1)
-
 
         # Frame for displaying plate number
         plate_frame = ttk.LabelFrame(camera_frame, text='Daily logs', borderwidth=1, relief=RIDGE)
@@ -304,26 +324,29 @@ class SSystem(ttk.Frame):
         self.total_visitors_value = ttk.Label(total_visitors_card, text="0", font=("Helvetica", 24))
         self.total_visitors_value.grid(row=1, column=0, pady=(0, 5))
 
-        daily_logs(plate_frame)
+        self.daily_logs(plate_frame)
 
         self.camera_border_color1 = 'white'
         self.camera_border_color2 = 'white'
 
         self.border_style.configure("face_border.TLabel", bordercolor=self.camera_border_color1,
-                                    sunkencost=2)  # Adjust the sunkencost value as needed
+                                    sunkencost=2)
         self.border_style.configure("license_border.TLabel", bordercolor=self.camera_border_color2,
-                                    sunkencost=2)  # Adjust the sunkencost value as needed
+                                    sunkencost=2)
+
+        self.camera_label1 = ttk.Label(camera_container, borderwidth=5, relief="solid", style="face_border.TLabel")
+        self.border_style.configure("license_border.TLabel", bordercolor=self.camera_border_color2)
 
         # Label to display the first camera feed
-        self.camera_label1 = ttk.Label(camera_container, borderwidth=5, relief="solid", style="face_border.TLabel")
+        self.camera_label2 = ttk.Label(camera_container, borderwidth=5, relief="solid", style="license_border.TLabel")
         self.camera_label1.pack(side=LEFT, padx=(0, 10))
 
         # Label to display the second camera feed
-        self.camera_label2 = ttk.Label(camera_container, borderwidth=5, relief="solid", style="license_border.TLabel")
+        self.camera_label2 = ttk.Label(camera_container, borderwidth=3, relief="solid", style="license_border.TLabel")
         self.camera_label2.pack(side=RIGHT)
 
-        self.start_camera_feed(2, self.camera_label1)
-        self.start_camera_feed(2, self.camera_label2)
+        self.start_camera_feed(0, self.camera_label1)
+        self.start_camera_feed(1, self.camera_label2)
 
         # Separator line between camera feeds and driver details
         separator = ttk.Separator(container_frame, orient=VERTICAL)
@@ -485,6 +508,8 @@ class SSystem(ttk.Frame):
     def update_driver_details(self):
         if self.driver_info is not None and self.img_driver is not None and self.vehicle_info is not None:
 
+            # avg_face_time = self.total_face_time / self.face_count
+
             driver_name, driver_type, driver_id, driver_phone = self.driver_info[0]
             plate_number, vehicle_type, vehicle_color = self.vehicle_info[0]
 
@@ -533,11 +558,14 @@ class SSystem(ttk.Frame):
 
         # face unauthorized
         elif self.driver_info is None and self.img_driver is not None and self.vehicle_info is not None:
+            self.face_unauthorized = True
             self.states = 'focus'
 
-            self.plate.set(self.vehicle_info.get("plate_number", ""))
-            self.vehicle_type.set(self.vehicle_info.get("vehicle_type", ""))
-            self.vehicle_color.set(self.vehicle_info.get("vehicle_color", ""))
+            plate_number, vehicle_type, vehicle_color = self.vehicle_info[0]
+
+            self.plate.set(plate_number)
+            self.vehicle_type.set(vehicle_type)
+            self.vehicle_color.set(vehicle_color)
 
             plate_value = self.plate.get()
             self.visitor = f"Visitor_{plate_value}"
@@ -563,10 +591,13 @@ class SSystem(ttk.Frame):
 
             self.states = 'focus'
 
-            self.driver_name.set(self.driver_info.get("name", ""))
-            self.type.set(self.driver_info.get("type", ""))
-            self.id_number.set(self.driver_info.get("id_number", ""))
-            self.phone.set(self.driver_info.get("phone", ""))
+            driver_name, driver_type, driver_id, driver_phone = self.driver_info[0]
+
+            self.driver_name.set(driver_name)
+            self.type.set(driver_type)
+            self.id_number.set(driver_id)
+            self.phone.set(driver_phone)
+
             self.plate.set(self.most_common_license)
 
             # Display the driver's image
@@ -579,8 +610,13 @@ class SSystem(ttk.Frame):
 
             # self.display_assoc_vehicle()
 
-    def setup_logs_tab(self, parent_tab):
-        history_logs(parent_tab)
+    def setup_logs_tab(self, scrolled_frame_logs):
+        container_frame = ttk.Frame(scrolled_frame_logs)
+        container_frame.grid(row=0, column=0, sticky="nsew")
+        scrolled_frame_logs.grid_rowconfigure(0, weight=1)
+        scrolled_frame_logs.grid_columnconfigure(0, weight=1)
+
+        history_logs(container_frame)
 
     def setup_register_tab(self, scrolled_frame_regis):
         container_frame = ttk.Frame(scrolled_frame_regis)
@@ -599,7 +635,7 @@ class SSystem(ttk.Frame):
         self.update_exit_camera(self.cap, camera_label, camera_id)
 
     def update_camera(self, cap, camera_label, camera_id):
-        global face_start
+        global face_start, license_start
         ret, frame = cap.read()
 
         if ret:
@@ -614,7 +650,7 @@ class SSystem(ttk.Frame):
 
                 try:
                     face_start = time.time()
-                    current_face = face_recognition.face_locations(face_cam, number_of_times_to_upsample=0)
+                    current_face = face_recognition.face_locations(face_cam)
                     current_encode = face_recognition.face_encodings(face_cam, current_face)
                     print("ENCODING 1")
 
@@ -625,11 +661,14 @@ class SSystem(ttk.Frame):
                     )
                     face_thread.start()
 
+
                 except Exception as e:
                     print("Error in face recognition:", e)
 
             if self.license_recognition_enabled and camera_id == 1:
                 self.license_cam = frame
+
+                self.license_start = time.time()
 
                 self.start_computation_thread()
 
@@ -662,12 +701,14 @@ class SSystem(ttk.Frame):
                     if associated:
                         self.update_driver_details()
                         end = time.time()
-                        print("Authorized recognition time: ", end - face_start)
+                        avg_time = end - face_start
+                        print(f"Authorized recognition time: {avg_time:.3f} seconds")
                     else:
                         self.not_match()
                         print("NOT MATCH")
                         end = time.time()
-                        print("Unmatched recognition time: ", end - face_start)
+                        avg_time = end - face_start
+                        print(f"Authorized recognition time: {avg_time:.3f} seconds")
 
                 elif ((self.face_counter and self.license_counter) == 1
                       and not self.license_recognized and not self.face_recognized):
@@ -684,7 +725,8 @@ class SSystem(ttk.Frame):
                     self.face_counter += 1
                     self.license_counter += 1
                     end = time.time()
-                    print("UnAuthorized recognition time: ", end - face_start)
+                    avg_time = end - face_start
+                    print(f"Authorized recognition time: {avg_time:.3f} seconds")
 
                 elif ((self.face_counter and self.license_counter) == 1
                       and self.license_recognized and not self.face_recognized):
@@ -739,6 +781,7 @@ class SSystem(ttk.Frame):
     def process_face_recognition(self, current_encode, current_face, face_cam, camera_label):
         print("ENCODINGSS")
         with self.face_lock:  # Use the lock to ensure thread safety
+
             for encode_face, face_location in zip(current_encode, current_face):
                 print("ENCODING")
                 top, right, bottom, left = face_location
@@ -813,6 +856,10 @@ class SSystem(ttk.Frame):
                     print("Unauthorized")
                     print("face_counter: ", self.face_frame_counter)
 
+            end = time.time()
+            avg_time = end - face_start
+            print(f"Face recognition time: {avg_time:.3f} seconds")
+
     def save_best_frame(self):
         if self.face_best_frame is not None:
             frame_rgb = cv2.cvtColor(self.face_best_frame, cv2.COLOR_BGR2RGB)
@@ -834,6 +881,7 @@ class SSystem(ttk.Frame):
             rect = cv2.rectangle(self.license_cam, (int(x1), int(y1)), (int(x2), int(y2)), (255, 255, 255), 2)
 
             if score > threshold:
+                license_starts = time.time()
                 object_detected = True  # Set the flag to True for valid detection
                 cv2.rectangle(self.license_cam, (int(x1), int(y1)), (int(x2), int(y2)), (255, 255, 255), 2)
                 print("lcounter: ", self.license_counter)
@@ -843,22 +891,28 @@ class SSystem(ttk.Frame):
                     license_plate_region = license_cam[int(y1):int(y2), int(x1):int(x2)]
 
                     try:
-                        resize_license_plate = cv2.resize(
-                            license_plate_region, None, fx=2, fy=2,
-                            interpolation=cv2.INTER_CUBIC)
+                        # Preprocess the license plate region
+                        resized_license_plate = cv2.resize(
+                            license_plate_region, None, fx=2, fy=2, interpolation=cv2.INTER_CUBIC)
 
-                        grayscale_resize_license_plate = cv2.cvtColor(
-                            resize_license_plate, cv2.COLOR_BGR2GRAY)
+                        grayscale_license_plate = cv2.cvtColor(
+                            resized_license_plate, cv2.COLOR_BGR2GRAY)
 
-                        gaussian_blur_license_plate = cv2.GaussianBlur(
-                            grayscale_resize_license_plate, (5, 5), 0)
+                        blurred_license_plate = cv2.GaussianBlur(
+                            grayscale_license_plate, (5, 5), 0)
 
+                        _, thresholded_license_plate = cv2.threshold(
+                            blurred_license_plate, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+
+                        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
+                        morph_image = cv2.morphologyEx(thresholded_license_plate, cv2.MORPH_CLOSE, kernel)
+
+                        # Perform OCR on the preprocessed license plate
                         config = ('--oem 3 -l eng --psm 6 -c '
                                   'tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789')
-                        ocr_result = pytesseract.image_to_string(gaussian_blur_license_plate, lang='eng',
-                                                                 config=config)
+                        ocr_result = pytesseract.image_to_string(morph_image, lang='eng', config=config)
 
-                        # Cleaning up the result
+                        # Clean up the OCR result
                         ocr_result = "".join(ocr_result.split()).replace(":", "").replace("-", "")
 
                         extracted_text = f'{ocr_result[:2]}{ocr_result[2:7]}'
@@ -887,15 +941,15 @@ class SSystem(ttk.Frame):
                         #     print(f"License plate {extracted_text} is in the vehicles data.")
 
                         else:
-                            pattern = r'[A-Z]{2}\d{5}'
+                            pattern = r'[A-Z]{3}\d{4}'
                             pattern2 = r'[A-Z]{2}\d{5}'
 
                             print("counter: ", self.license_frame_counter)
 
                             if self.license_frame_counter == 5:
 
-                                pattern = r'[A-Z]{2}\d{5}'
-                                pattern2 = r'[A-Z]{3}\d{4}'
+                                pattern = r'[A-Z]{3}\d{4}'
+                                pattern2 = r'[A-Z]{2}\d{5}'
                                 filtered_licenses = []
 
                                 for licenses in self.collected_licenses:
@@ -936,6 +990,7 @@ class SSystem(ttk.Frame):
                 self.camera_label2.configure(image=photo)
                 self.camera_label2.image = photo
 
+
         # Schedule the GUI update method in the main thread
         frame_queue.put(self.license_cam)
 
@@ -959,6 +1014,32 @@ class SSystem(ttk.Frame):
 
         form_field_label = ttk.Label(master=form_field_container, text=label, width=15)
         form_field_label.grid(row=0, column=0, padx=12, pady=(0, 5), sticky="w")
+
+        if variable is self.plate:
+            form_input = ttk.Entry(master=form_field_container, textvariable=entry_var, font=('Helvetica', 13))
+            form_input.grid(row=1, column=0, padx=5, pady=(0, 5), sticky="ew")
+
+            if self.face_unauthorized:
+
+                plate_btn = ttk.Button(master=form_field_container, text="Find", bootstyle="danger",
+                                       command=self.display_assoc_driver)
+                plate_btn.grid(row=1, column=1, padx=(5, 0), pady=(0, 5))
+
+                form_field_container.grid_columnconfigure(0, weight=1)
+                form_field_container.grid_columnconfigure(1, weight=0)
+
+        if variable is self.id_number:
+            id_input = ttk.Entry(master=form_field_container, textvariable=entry_var, font=('Helvetica', 13))
+            id_input.grid(row=1, column=0, padx=5, pady=(0, 5), sticky="ew")
+
+            if self.license_unauthorized:
+
+                id_btn = ttk.Button(master=form_field_container, text="Find", bootstyle="danger",
+                                    command=self.display_assoc_vehicle)
+                id_btn.grid(row=1, column=1, padx=(5, 0), pady=(0, 5))
+
+                form_field_container.grid_columnconfigure(0, weight=1)
+                form_field_container.grid_columnconfigure(1, weight=0)
 
         if variable is self.type:
             # If the variable is self.type, create a Combobox instead of an Entry widget
@@ -1095,6 +1176,40 @@ class SSystem(ttk.Frame):
     def register_driver(self):
         return
 
+    def daily_logs(self, plate_frame):
+
+        colors = ttk.Style().colors
+
+        custom_style = ttk.Style()
+        custom_style.configure("Custom.Treeview", font=("Helvetica", 12))
+
+        coldata = [
+            {"text": "Name", "stretch": False},
+            {"text": "Category", "stretch": False},
+            {"text": "ID number", "stretch": False},
+            {"text": "Plate number", "stretch": False},
+            {"text": "Phone", "stretch": False},
+            {"text": "Date", "stretch": False},
+            {"text": "Time in", "stretch": False},
+        ]
+
+        rowdata = [list(row) for row in database.fetch_daily_logs()]
+
+        self.table_view = Tableview(
+            master=plate_frame,
+            coldata=coldata,
+            rowdata=rowdata,
+            paginated=True,
+            searchable=True,
+            stripecolor=None,
+            autoalign=True,
+            bootstyle=PRIMARY,
+        )
+        default_font = nametofont("TkDefaultFont")
+        default_font.configure(size=10)
+        plate_frame.option_add("*Font", default_font)
+
+        self.table_view.pack(fill=BOTH, expand=YES, padx=10, pady=5)
 
     def not_match(self):
 
@@ -1148,13 +1263,14 @@ class SSystem(ttk.Frame):
             time_in_status = 0
             is_registered = 0
 
-            database.insert_logs(id_number_value, plate_value, self.date,
-                                 self.time_in,None, time_in_status, is_registered)
+            # database.insert_logs(id_number_value, plate_value, self.date,
+            #                      self.time_in,None, time_in_status, is_registered)
 
             self.table_view.insert_row(index=0,
                                        values=[driver_name_value, type_value, id_number_value, plate_value, phone_value,
                                                self.date,
                                                self.time_in, None, time_in_status, is_registered])
+
 
         # face not authorized
         elif self.driver_info is None and self.img_driver is not None and self.vehicle_info is not None:
@@ -1193,7 +1309,7 @@ class SSystem(ttk.Frame):
                                  self.time_in,
                                  None, time_in_status, is_registered)
 
-            self.table_view.insert_row(index=0,
+            self.table_view.table_views.insert_row(index=0,
                                        values=[driver_name_value, type_value, id_number_value, plate_value, phone_value,
                                                self.date,
                                                self.time_in, None, time_in_status, is_registered])
@@ -1225,10 +1341,11 @@ class SSystem(ttk.Frame):
         parent_tab = Toplevel(self.master_window)
         parent_tab.title("AUTHORIZED DRIVER")
 
-        authorized_plate = self.type.get()
+        authorized_plate = self.plate.get()
+        authorized_name = self.driver_name.get()
         # print(authorized_plate)
 
-        authorized_driver(parent_tab, authorized_plate)
+        authorized_driver(parent_tab, authorized_plate, authorized_name)
 
     def display_assoc_vehicle(self):
 
