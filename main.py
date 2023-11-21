@@ -42,11 +42,12 @@ from unregistered_encoding import process_images
 
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
-# reader = easyocr.Reader(['en'], gpu=True)
+# reader = easyocr.Reader(['en'], gpu=True)x
 # Load the YOLO model
-model_path = os.path.join('.', 'runs', 'detect', 'train', 'weights', 'best.pt')
+model_path = os.path.join('.', 'runs', 'detect', 'train', 'weights', 'last.pt')
+license_plate_detector = YOLO('best.pt')
 lpr_model = YOLO(model_path)
-threshold = 0.50
+threshold = 0.35
 
 frame_queue = queue.Queue()
 
@@ -61,8 +62,8 @@ frame_queue = queue.Queue()
 class SSystem(ttk.Frame):
     def __init__(self, master_window):
 
-        self.face_unauthorized = False
-        self.license_unauthorized = False
+        self.face_unauthorized = True
+        self.license_unauthorized = True
         self.license_start = None
         self.license_count = 0
         self.total_license_time = 0
@@ -299,30 +300,30 @@ class SSystem(ttk.Frame):
         # Start updating the time and date label
         self.update_time_date(time_date_label)
 
-        # Card for Total Entries
-        total_entries_card = ttk.Frame(card_frame, borderwidth=1, relief=SOLID)
-        total_entries_card.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
-        total_entries_card.grid_rowconfigure(0, weight=1)
-        total_entries_card.grid_columnconfigure(0, weight=1)
-
-        total_entries_label = ttk.Label(total_entries_card, text="Total Entries", font=("Helvetica", 16, "bold"))
-        total_entries_label.grid(row=0, column=0, pady=(5, 0))
-
-        self.total_entries_value = ttk.Label(total_entries_card, text="0", font=("Helvetica", 24))
-        self.total_entries_value.grid(row=1, column=0, pady=(0, 5))
-
-        # Card for Total Visitors Entered
-        total_visitors_card = ttk.Frame(card_frame, borderwidth=1, relief=SOLID, width=50)
-        total_visitors_card.grid(row=0, column=1, padx=10, pady=10, sticky="nsew")
-        total_visitors_card.grid_rowconfigure(0, weight=1)
-        total_visitors_card.grid_columnconfigure(0, weight=1)
-
-        total_visitors_label = ttk.Label(total_visitors_card, text="Total Visitors Entered",
-                                         font=("Helvetica", 16, "bold"))
-        total_visitors_label.grid(row=0, column=0, pady=(5, 0))
-
-        self.total_visitors_value = ttk.Label(total_visitors_card, text="0", font=("Helvetica", 24))
-        self.total_visitors_value.grid(row=1, column=0, pady=(0, 5))
+        # # Card for Total Entries
+        # total_entries_card = ttk.Frame(card_frame, borderwidth=1, relief=SOLID)
+        # total_entries_card.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
+        # total_entries_card.grid_rowconfigure(0, weight=1)
+        # total_entries_card.grid_columnconfigure(0, weight=1)
+        #
+        # total_entries_label = ttk.Label(total_entries_card, text="Total Entries", font=("Helvetica", 16, "bold"))
+        # total_entries_label.grid(row=0, column=0, pady=(5, 0))
+        #
+        # self.total_entries_value = ttk.Label(total_entries_card, text="0", font=("Helvetica", 24))
+        # self.total_entries_value.grid(row=1, column=0, pady=(0, 5))
+        #
+        # # Card for Total Visitors Entered
+        # total_visitors_card = ttk.Frame(card_frame, borderwidth=1, relief=SOLID, width=50)
+        # total_visitors_card.grid(row=0, column=1, padx=10, pady=10, sticky="nsew")
+        # total_visitors_card.grid_rowconfigure(0, weight=1)
+        # total_visitors_card.grid_columnconfigure(0, weight=1)
+        #
+        # total_visitors_label = ttk.Label(total_visitors_card, text="Total Visitors Entered",
+        #                                  font=("Helvetica", 16, "bold"))
+        # total_visitors_label.grid(row=0, column=0, pady=(5, 0))
+        #
+        # self.total_visitors_value = ttk.Label(total_visitors_card, text="0", font=("Helvetica", 24))
+        # self.total_visitors_value.grid(row=1, column=0, pady=(0, 5))
 
         self.daily_logs(plate_frame)
 
@@ -345,8 +346,8 @@ class SSystem(ttk.Frame):
         self.camera_label2 = ttk.Label(camera_container, borderwidth=3, relief="solid", style="license_border.TLabel")
         self.camera_label2.pack(side=RIGHT)
 
-        self.start_camera_feed(0, self.camera_label1)
-        self.start_camera_feed(1, self.camera_label2)
+        self.start_camera_feed(1, self.camera_label1)
+        self.start_camera_feed(0, self.camera_label2)
 
         # Separator line between camera feeds and driver details
         separator = ttk.Separator(container_frame, orient=VERTICAL)
@@ -643,7 +644,7 @@ class SSystem(ttk.Frame):
             # Resize frame for display
 
             # Perform face recognition on the second camera feed (camera_id=1)
-            if self.face_recognition_enabled and camera_id == 0:
+            if self.face_recognition_enabled and camera_id == 1:
                 face_cam = frame
                 face_photo = ImageTk.PhotoImage(image=Image.fromarray(face_cam))
                 camera_label.configure(image=face_photo, borderwidth=1, relief="solid")
@@ -665,7 +666,7 @@ class SSystem(ttk.Frame):
                 except Exception as e:
                     print("Error in face recognition:", e)
 
-            if self.license_recognition_enabled and camera_id == 1:
+            if self.license_recognition_enabled and camera_id == 0:
                 self.license_cam = frame
 
                 self.license_start = time.time()
@@ -856,10 +857,6 @@ class SSystem(ttk.Frame):
                     print("Unauthorized")
                     print("face_counter: ", self.face_frame_counter)
 
-            end = time.time()
-            avg_time = end - face_start
-            print(f"Face recognition time: {avg_time:.3f} seconds")
-
     def save_best_frame(self):
         if self.face_best_frame is not None:
             frame_rgb = cv2.cvtColor(self.face_best_frame, cv2.COLOR_BGR2RGB)
@@ -878,7 +875,7 @@ class SSystem(ttk.Frame):
 
         for result in results.boxes.data.tolist():
             x1, y1, x2, y2, score, class_id = result
-            rect = cv2.rectangle(self.license_cam, (int(x1), int(y1)), (int(x2), int(y2)), (255, 255, 255), 2)
+            cv2.rectangle(self.license_cam, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
 
             if score > threshold:
                 license_starts = time.time()
@@ -990,18 +987,8 @@ class SSystem(ttk.Frame):
                 self.camera_label2.configure(image=photo)
                 self.camera_label2.image = photo
 
-
         # Schedule the GUI update method in the main thread
         frame_queue.put(self.license_cam)
-
-    def display_frame_with_rectangles(self):
-        try:
-            # Retrieve the latest frame from the queue
-            self.license_cam = frame_queue.get_nowait()
-        except queue.Empty:
-            pass
-        # Repeat the update after a delay (e.g., 30ms)
-        self.master_window.after(25, self.display_frame_with_rectangles)
 
     def create_form_entry(self, container, label, variable):
 
@@ -1058,7 +1045,6 @@ class SSystem(ttk.Frame):
         # Make the columns of form_field_container expand relative to the container's width
         form_field_container.grid_columnconfigure(0, weight=1)  # Set weight for column 0
 
-        add_regex_validation(widget, r'^[a-zA-Z0-9_]*')  # Add validation for the widget (either combobox or entry)
 
         return widget
 
@@ -1101,6 +1087,11 @@ class SSystem(ttk.Frame):
     #     sleep(0.015)
 
     def reset(self):
+
+        s_system.update()
+        s_system.update_idletasks()
+        app.update()
+        app.update_idletasks()
 
         self.license_recognition_enabled = False
         self.face_recognition_enabled = False
@@ -1235,8 +1226,8 @@ class SSystem(ttk.Frame):
 
             id_number_value = None
             phone_value = None
-            time_in_status = 0
-            is_registered = 1
+            time_in_status = 1
+            is_registered = 0
 
             database.insert_logs(id_number_value, plate_value, self.date, self.time_in,
                                  None, time_in_status, is_registered)
@@ -1260,8 +1251,8 @@ class SSystem(ttk.Frame):
         # authorized
         elif self.driver_info is not None and self.img_driver is not None and self.vehicle_info is not None:
 
-            time_in_status = 0
-            is_registered = 0
+            time_in_status = 1
+            is_registered = 1
 
             # database.insert_logs(id_number_value, plate_value, self.date,
             #                      self.time_in,None, time_in_status, is_registered)
@@ -1271,12 +1262,11 @@ class SSystem(ttk.Frame):
                                                self.date,
                                                self.time_in, None, time_in_status, is_registered])
 
-
         # face not authorized
         elif self.driver_info is None and self.img_driver is not None and self.vehicle_info is not None:
             id_number_value = None
             phone_value = None
-            time_in_status = 0
+            time_in_status = 1
             is_registered = 1
 
             database.insert_logs(id_number_value, plate_value, self.date,
@@ -1302,7 +1292,7 @@ class SSystem(ttk.Frame):
         elif (self.most_common_license is not None and self.driver_info is not None and self.img_driver is not None
               and self.vehicle_info is None):
 
-            time_in_status = 0
+            time_in_status = 1
             is_registered = 1
 
             database.insert_logs(id_number_value, plate_value, self.date,
@@ -1342,10 +1332,9 @@ class SSystem(ttk.Frame):
         parent_tab.title("AUTHORIZED DRIVER")
 
         authorized_plate = self.plate.get()
-        authorized_name = self.driver_name.get()
         # print(authorized_plate)
 
-        authorized_driver(parent_tab, authorized_plate, authorized_name)
+        authorized_driver(parent_tab, authorized_plate)
 
     def display_assoc_vehicle(self):
 
@@ -1353,9 +1342,10 @@ class SSystem(ttk.Frame):
         parent_tab.title("AUTHORIZED VEHICLE")
 
         authorized_id = self.id_number.get()
+        authorized_name = self.driver_name.get()
         # print(authorized_id)
 
-        authorized_vehicle(parent_tab, authorized_id)
+        authorized_vehicle(parent_tab, authorized_id, authorized_name)
 
     # exit
     def update_exit_camera(self, cap, camera_label, camera_id):

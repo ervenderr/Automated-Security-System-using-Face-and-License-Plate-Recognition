@@ -80,10 +80,11 @@ def fetch_all_logs():
             COALESCE(d.name, 'Visitor_' || dl.plate_number) AS name,
             COALESCE(d.type, 'Visitor') AS type,
             dl.id_number,
-            dl.plate_number,
             d.phone,
+            dl.plate_number,
             dl.date,
-            dl.time_in
+            dl.time_in,
+            dl.time_out
         FROM daily_logs dl
         LEFT JOIN drivers d ON dl.id_number = d.id_number
         LEFT JOIN vehicles v ON dl.plate_number = v.plate_number
@@ -296,7 +297,7 @@ def are_associated(driver_id, plate_number):
 # INSERT QUERIES:
 ph_tz = pytz.timezone('Asia/Manila')
 datess = datetime.date.today().strftime("%Y-%m-%d")
-current_time = datetime.datetime.now(tz=ph_tz).strftime("%H:%M:%S")
+current_time = datetime.datetime.now(tz=ph_tz).strftime("%I:%M %p")
 
 
 def insert_logs(id_number, plate_number, date, time_in, time_out, time_in_status, is_registered):
@@ -311,53 +312,58 @@ def insert_logs(id_number, plate_number, date, time_in, time_out, time_in_status
     conn.commit()
     conn.close()
 
+print(current_time)
 
-# def delete(driver_id, plate_number):
-#     conn = sqlite3.connect('drivers.db')
-#     c = conn.cursor()
-#
-#     # Corrected DELETE statement
-#     c.execute("DELETE FROM driver_vehicle WHERE driver_id = ? AND plate_number = ?;", (driver_id, plate_number))
-#
-#     conn.commit()
-#     conn.close()
-#
-#
-#
-# ids = 113232
-# plate = 'JAW9341'
-# delete(ids, plate)
+# insert_logs(111111, 'JAW9341', datess, current_time,
+#                                  current_time, 1, 1)
+
+
+def delete(driver_id, plate_number):
+    conn = sqlite3.connect('drivers.db')
+    c = conn.cursor()
+
+    # Corrected DELETE statement
+    c.execute("DELETE FROM driver_vehicle WHERE driver_id = ? AND plate_number = ?;", (driver_id, plate_number))
+
+    conn.commit()
+    conn.close()
+
+
+
+ids = ''
+plate = ''
+delete(ids, plate)
 #
 #
 # import sqlite3
 #
-# def delete(driver_id):
-#     conn = sqlite3.connect('drivers.db')
-#     c = conn.cursor()
-#
-#     # Corrected DELETE statement
-#     c.execute("DELETE FROM vehicles WHERE plate_number = ?;", (driver_id,))
-#
-#     conn.commit()
-#     conn.close()
-#
-# # Example usage
-# ids = 'JAW9341'
-# delete(ids)
-#
-# def deleted(driver_id):
-#     conn = sqlite3.connect('drivers.db')
-#     c = conn.cursor()
-#
-#     # Corrected DELETE statement
-#     c.execute("DELETE FROM drivers WHERE id_number = ?;", (driver_id,))
-#
-#     conn.commit()
-#     conn.close()
-#
-# # Example usage
-# ids = 113232
-# deleted(ids)
+def delete(driver_id):
+    conn = sqlite3.connect('drivers.db')
+    c = conn.cursor()
+
+    # Corrected DELETE statement
+    c.execute("DELETE FROM vehicles WHERE plate_number = ?;", (driver_id,))
+
+    conn.commit()
+    conn.close()
+
+# Example usage
+ids = ''
+delete(ids)
+
+def deleted(driver_id):
+    conn = sqlite3.connect('drivers.db')
+    c = conn.cursor()
+
+    # Corrected DELETE statement
+    c.execute("DELETE FROM drivers WHERE id_number = ?;", (driver_id,))
+
+    conn.commit()
+    conn.close()
+
+# Example usage
+ids = ''
+deleted(ids)
 
 
 import sqlite3

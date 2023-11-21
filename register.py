@@ -1,6 +1,10 @@
 import base64
 import os
 
+from ttkbootstrap.dialogs import MessageDialog, Messagebox
+from ttkbootstrap.icons import Icon
+from ttkbootstrap.validation import add_validation, _validate_text
+
 import database
 import datetime
 
@@ -110,78 +114,87 @@ def create_driver(parent_tab):
         driver_vehicle_type = vehicle_type_entry.get()
         driver_vehicle_color = vehicle_color_entry.get()
 
-        # Save driver's information
-        # Check if the driver with the given ID already exists in the database
-        existing_driver = fetch_driver(drivers_id)
-        print('existing_driver:', existing_driver)
+        if drivers_name != '' and drivers_id != '' and drivers_type != '' and driver_phone != '':
 
-        if existing_driver:
-            # Driver already exists, update the information
-            c.execute('UPDATE drivers SET id_number=?, name=?, type=?, phone=?, date=? WHERE id_number=?',
-                      (drivers_id, drivers_name, drivers_type, driver_phone, date, drivers_id))
-        else:
-            # Driver doesn't exist, insert a new record
-            c.execute('INSERT INTO drivers (id_number, name, type, phone, date) VALUES (?, ?, ?, ?, ?)',
-                      (drivers_id, drivers_name, drivers_type, driver_phone, date))
+            # Save driver's information
+            # Check if the driver with the given ID already exists in the database
+            existing_driver = fetch_driver(drivers_id)
+            print('existing_driver:', existing_driver)
 
-        # Check if the vehicle exists in Vehicles table
-        vehicle_data = fetch_vehicle(driver_plate)
-        print('vehicle_data:', vehicle_data)
+            if existing_driver:
+                # Driver already exists, update the information
+                c.execute('UPDATE drivers SET id_number=?, name=?, type=?, phone=?, date=? WHERE id_number=?',
+                          (drivers_id, drivers_name, drivers_type, driver_phone, date, drivers_id))
+            else:
+                # Driver doesn't exist, insert a new record
+                c.execute('INSERT INTO drivers (id_number, name, type, phone, date) VALUES (?, ?, ?, ?, ?)',
+                          (drivers_id, drivers_name, drivers_type, driver_phone, date))
 
-        if vehicle_data:
-            # Driver already exists, update the information
-            c.execute('UPDATE vehicles SET plate_number=?, vehicle_color=?, vehicle_type=?, date=? WHERE plate_number=?',
-                      (driver_plate, driver_vehicle_color, driver_vehicle_type, date, driver_plate))
-        else:
-            # Vehicle doesn't exist, insert a new record
-            c.execute('INSERT INTO vehicles (plate_number, vehicle_color, vehicle_type, date) VALUES (?, ?, ?, ?)',
-                      (driver_plate, driver_vehicle_color, driver_vehicle_type, date))
+            # Check if the vehicle exists in Vehicles table
+            vehicle_data = fetch_vehicle(driver_plate)
+            print('vehicle_data:', vehicle_data)
 
-        # Save the association between the driver and the vehicle in driver_vehicle table
-        c.execute('SELECT * FROM driver_vehicle WHERE driver_id = ? AND plate_number = ?',
-                  (drivers_id, driver_plate))
-        existing_association = c.fetchone()
-        print('existing_association:', existing_association)
+            if vehicle_data:
+                # Driver already exists, update the information
+                c.execute('UPDATE vehicles SET plate_number=?, vehicle_color=?, vehicle_type=?, date=? WHERE '
+                          'plate_number=?',
+                          (driver_plate, driver_vehicle_color, driver_vehicle_type, date, driver_plate))
 
-        if existing_association:
-            # Update the existing record if the association already exists
-            c.execute('UPDATE driver_vehicle SET plate_number = ? WHERE driver_id = ?',
-                      (driver_plate, drivers_id))
-        else:
-            # Insert a new record if the association doesn't exist
-            c.execute('INSERT INTO driver_vehicle (driver_id, plate_number) VALUES (?, ?)',
+            elif driver_plate != '' and driver_vehicle_color != '' and driver_vehicle_type != '':
+                # Vehicle doesn't exist, insert a new record
+                c.execute('INSERT INTO vehicles (plate_number, vehicle_color, vehicle_type, date) VALUES (?, ?, ?, ?)',
+                          (driver_plate, driver_vehicle_color, driver_vehicle_type, date))
+
+            # Save the association between the driver and the vehicle in driver_vehicle table
+            c.execute('SELECT * FROM driver_vehicle WHERE driver_id = ? AND plate_number = ?',
                       (drivers_id, driver_plate))
+            existing_association = c.fetchone()
+            print('existing_association:', existing_association)
 
-        # Commit the changes and close the connection
-        conn.commit()
-        conn.close()
+            if existing_association:
+                # Update the existing record if the association already exists
+                c.execute('UPDATE driver_vehicle SET plate_number = ? WHERE driver_id = ?',
+                          (driver_plate, drivers_id))
+            elif drivers_id != '' and driver_plate != '':
+                # Insert a new record if the association doesn't exist
+                c.execute('INSERT INTO driver_vehicle (driver_id, plate_number) VALUES (?, ?)',
+                          (drivers_id, driver_plate))
 
-        if img is not None and drivers_id != 'None':
-            # Convert frame to PIL image
-            filename = f'Images/registered driver/{drivers_id}.png'
-            file_image = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-            pil_image = Image.fromarray(file_image)
+            # Commit the changes and close the connection
+            conn.commit()
+            conn.close()
 
-            # Save image
-            pil_image.save(filename)
-            print('pil_image', copied_img_file)
+            if img is not None and drivers_id != 'None':
+                # Convert frame to PIL image
+                filename = f'Images/registered driver/{drivers_id}.png'
+                file_image = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                pil_image = Image.fromarray(file_image)
 
-        selected = tree_view.view.focus()
-        print(f'selected {selected}')
+                # Save image
+                pil_image.save(filename)
+                print('pil_image', copied_img_file)
 
-        clear()
+            selected = tree_view.view.focus()
+            print(f'selected {selected}')
 
-        EncodeGenerator.process_encodings()
+            clear()
 
-        tree_view.load_table_data()
+            EncodeGenerator.process_encodings()
 
-        toast = ToastNotification(
-            title="Success",
-            message="YEHEY SUCCESS",
-            duration=3000,
-        )
-        toast.show_toast()
-        print("Driver Created")
+            tree_view.load_table_data()
+
+            toast = ToastNotification(
+                title="Success",
+                message="DRIVER UPDATED",
+                duration=3000,
+            )
+            toast.show_toast()
+            print("Driver Created")
+        else:
+
+            Messagebox.ok("Driver details Cannot be Empty", 'INPUT ERROR',
+                          icon=Icon.error)
+            print('messad')
 
     def clear():
         id_entry.delete(0, END)
@@ -281,39 +294,6 @@ def create_driver(parent_tab):
         driver_image_label.config(image=driver_image)
         driver_image_label.image = driver_image
 
-    def selected_vehicle_row(e):
-        global copied_img_file
-        global id_nums
-
-        plate_entry.delete(0, END)
-        vehicle_type_entry.delete(0, END)
-        vehicle_color_entry.delete(0, END)
-
-        logs_data = fetch_all_logs()
-
-        # Iterate through the data and print the name
-        for log_entry in logs_data:
-            print("Name:", log_entry[0])
-
-        selected_indices = tree_view.view.selection()  # Get the selected indices
-        print('selected_indices: ', selected_indices)
-
-        selected = tree_view.view.focus()
-        values = tree_view.view.item(selected, 'values')
-
-        plate_nums = values[0]
-
-        print(f'plate_nums: {plate_nums}')
-
-        vehicle_info = fetch_vehicle(plate_nums)
-
-        print(vehicle_info)
-
-        if vehicle_info is not None:
-
-            plate_entry.insert(0, values[0])
-            vehicle_type_entry.insert(0, values[1])
-            vehicle_color_entry.insert(0, values[2])
 
     def remove_id():
         pass
@@ -385,6 +365,40 @@ def create_driver(parent_tab):
     pages = [table_frame, table_frame2]
 
     def profile_page(e):
+
+        def selected_vehicle_row(e):
+            global copied_img_file
+            global id_nums
+
+            plate_entry.delete(0, END)
+            vehicle_type_entry.delete(0, END)
+            vehicle_color_entry.delete(0, END)
+
+            logs_data = fetch_all_logs()
+
+            # Iterate through the data and print the name
+            for log_entry in logs_data:
+                print("Name:", log_entry[0])
+
+            selected_indices = tree_view.view.selection()  # Get the selected indices
+            print('selected_indices: ', selected_indices)
+
+            selected = export_vehicles.view.focus()
+            values = export_vehicles.view.item(selected, 'values')
+
+            plate_nums = values[0]
+
+            print(f'plate_nums: {plate_nums}')
+
+            vehicle_info = fetch_vehicle(plate_nums)
+
+            print(vehicle_info)
+
+            if vehicle_info is not None:
+                plate_entry.insert(0, values[0])
+                vehicle_type_entry.insert(0, values[1])
+                vehicle_color_entry.insert(0, values[2])
+
         selected_driver_row()
         global page_count, id_number
 
@@ -413,8 +427,6 @@ def create_driver(parent_tab):
             print(f'export_vehicles {export_vehicles}')
 
             export_vehicles.view.bind("<ButtonRelease-1>", selected_vehicle_row)
-
-            print(tree_view.winfo_class())
 
 
     def list_profile_page():
@@ -454,6 +466,7 @@ def create_driver(parent_tab):
     name_label.pack(padx=5, pady=5, fill=BOTH)
     name_entry = ttk.Entry(profile_driver_frame, font=('Helvetica', 13))
     name_entry.pack(padx=5, pady=5, fill=BOTH)
+    add_validation(name_entry, _validate_text)
 
     type_label = ttk.Label(profile_driver_frame, text="Category:")
     type_label.pack(padx=5, pady=5, fill=BOTH)

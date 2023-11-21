@@ -117,7 +117,7 @@ def driver_authorized_vehicles(table_frame2, id_number):
         autoalign=True,
     )
 
-    registered_label_text = ttk.Label(table_frame2, text="AUTHORIZED DRIVER",
+    registered_label_text = ttk.Label(table_frame2, text="AUTHORIZED VEHICLES",
                                       width=50, font=("Arial", 20, "bold"))
 
     registered_label_text.grid(row=1, column=0, sticky="ew")

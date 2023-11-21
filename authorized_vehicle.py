@@ -23,7 +23,7 @@ img = None
 filename = None
 
 
-def authorized_vehicle(parent_tab, authorized_id):
+def authorized_vehicle(parent_tab, authorized_id, authorized_name):
 
     def selectPic():
 
@@ -120,7 +120,7 @@ def authorized_vehicle(parent_tab, authorized_id):
                                 width=50, font=("Arial", 20, "bold"),
                                 anchor='center')
 
-    texts = f'AUTHORIZED VEHICLES FOR {authorized_id}'
+    texts = f'AUTHORIZED VEHICLES FOR {authorized_name}'
     registered_label_text = ttk.Label(time_date_frame, text=texts,
                                       width=50, font=("Arial", 20, "bold"))
 

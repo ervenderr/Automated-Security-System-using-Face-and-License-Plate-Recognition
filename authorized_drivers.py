@@ -23,7 +23,7 @@ img = None
 filename = None
 
 
-def authorized_driver(parent_tab, authorized_plate, authorized_name):
+def authorized_driver(parent_tab, authorized_plate):
 
     def selectPic():
 
@@ -139,7 +139,7 @@ def authorized_driver(parent_tab, authorized_plate, authorized_name):
     time_date_label = ttk.Label(time_date_frame, text="",
                                 width=50, font=("Arial", 20, "bold"),
                                 anchor='center')
-    texts = f'AUTHORIZED DRIVERS FOR {authorized_name}'
+    texts = f'AUTHORIZED DRIVERS FOR {authorized_plate}'
     registered_label_text = ttk.Label(time_date_frame, text=texts,
                                       width=50, font=("Arial", 20, "bold"))
 
