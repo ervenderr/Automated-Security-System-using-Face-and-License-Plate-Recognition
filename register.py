@@ -327,7 +327,7 @@ def create_driver(parent_tab):
                                 width=50, font=("Arial", 20, "bold"),
                                 anchor='center')
 
-    registered_label_text = ttk.Label(time_date_frame, text="REGISTERED DRIVER AND VEHICLE",
+    registered_label_text = ttk.Label(time_date_frame, text="REGISTERED DRIVERS",
                                       width=50, font=("Arial", 20, "bold"))
 
     # Center the label within the time_date_frame

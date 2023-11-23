@@ -62,6 +62,7 @@ frame_queue = queue.Queue()
 class SSystem(ttk.Frame):
     def __init__(self, master_window):
 
+        self.not_matching = False
         self.face_unauthorized = True
         self.license_unauthorized = True
         self.license_start = None
@@ -232,8 +233,8 @@ class SSystem(ttk.Frame):
 
         # Check if the "Home" tab is selected, enable face recognition
         if current_tab_index == 0:
-            self.face_recognition_enabled = False
-            self.license_recognition_enabled = False
+            self.face_recognition_enabled = True
+            self.license_recognition_enabled = True
 
         elif current_tab_index == 1:
             self.face_recognition_enabled = False
@@ -390,13 +391,11 @@ class SSystem(ttk.Frame):
         self.create_buttonbox(profile_driver_frame)
 
     def setup_exit_tab(self, scrolled_exit_frame):
-        pass
-        # # Container frame for camera feeds and driver details
-        # container_frame = ttk.Frame(scrolled_exit_frame)
-        # container_frame.grid(row=0, column=0, columnspan=5, sticky="nsew")
-        # scrolled_exit_frame.grid_rowconfigure(0, weight=1)
-        # scrolled_exit_frame.grid_columnconfigure(0, weight=1)
-        #
+        container_frame = ttk.Frame(scrolled_exit_frame)
+        container_frame.grid(row=0, column=0, columnspan=5, sticky="nsew")
+        scrolled_exit_frame.grid_rowconfigure(0, weight=1)
+        scrolled_exit_frame.grid_columnconfigure(0, weight=1)
+
         # # Frame for the cameras
         # camera_frame = ttk.Frame(container_frame)
         # camera_frame.grid(row=0, column=3, sticky="nsew", padx=20, pady=10)
@@ -410,9 +409,14 @@ class SSystem(ttk.Frame):
         # time_date_frame.grid_columnconfigure(0, weight=1)
         # self.border_style = Style(theme="superhero")
         #
+        # card_frame = ttk.Frame(camera_frame)
+        # card_frame.grid(row=3, column=0, sticky="nsew", padx=20, pady=10)
+        # card_frame.grid_rowconfigure(0, weight=1)
+        # card_frame.grid_columnconfigure(0, weight=1)
+        #
         # # Frame for displaying plate number
         # plate_frame = ttk.LabelFrame(camera_frame, text='Daily logs', borderwidth=1, relief=RIDGE)
-        # plate_frame.grid(row=3, column=0, sticky="nsew", pady=10)
+        # plate_frame.grid(row=4, column=0, sticky="nsew", pady=10)
         # plate_frame.grid_rowconfigure(0, weight=1)
         # plate_frame.grid_columnconfigure(0, weight=1)
         #
@@ -427,11 +431,12 @@ class SSystem(ttk.Frame):
         # camera_paned_window.add(camera_container)
         #
         # # Label to display the time and date
-        # time_date_label = ttk.Label(time_date_frame, text="",font=("Arial", 20, "bold"), anchor='center')
+        # time_date_label = ttk.Label(time_date_frame, text="", font=("Helvetica", 20, "bold"), anchor='center')
         #
         # # Center the label within the time_date_frame
         # time_date_label.grid(row=0, column=0, sticky="nsew")
         #
+        # # Label to display the time and date
         # entrans_label = ttk.Label(time_date_frame, text="EXIT", font=("Helvetica", 30, "bold"), anchor='center')
         #
         # # Center the label within the time_date_frame
@@ -440,22 +445,52 @@ class SSystem(ttk.Frame):
         # # Start updating the time and date label
         # self.update_time_date(time_date_label)
         #
+        # # # Card for Total Entries
+        # # total_entries_card = ttk.Frame(card_frame, borderwidth=1, relief=SOLID)
+        # # total_entries_card.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
+        # # total_entries_card.grid_rowconfigure(0, weight=1)
+        # # total_entries_card.grid_columnconfigure(0, weight=1)
+        # #
+        # # total_entries_label = ttk.Label(total_entries_card, text="Total Entries", font=("Helvetica", 16, "bold"))
+        # # total_entries_label.grid(row=0, column=0, pady=(5, 0))
+        # #
+        # # self.total_entries_value = ttk.Label(total_entries_card, text="0", font=("Helvetica", 24))
+        # # self.total_entries_value.grid(row=1, column=0, pady=(0, 5))
+        # #
+        # # # Card for Total Visitors Entered
+        # # total_visitors_card = ttk.Frame(card_frame, borderwidth=1, relief=SOLID, width=50)
+        # # total_visitors_card.grid(row=0, column=1, padx=10, pady=10, sticky="nsew")
+        # # total_visitors_card.grid_rowconfigure(0, weight=1)
+        # # total_visitors_card.grid_columnconfigure(0, weight=1)
+        # #
+        # # total_visitors_label = ttk.Label(total_visitors_card, text="Total Visitors Entered",
+        # #                                  font=("Helvetica", 16, "bold"))
+        # # total_visitors_label.grid(row=0, column=0, pady=(5, 0))
+        # #
+        # # self.total_visitors_value = ttk.Label(total_visitors_card, text="0", font=("Helvetica", 24))
+        # # self.total_visitors_value.grid(row=1, column=0, pady=(0, 5))
+        #
         # self.daily_logs(plate_frame)
         #
         # self.camera_border_color1 = 'white'
         # self.camera_border_color2 = 'white'
         #
-        # self.border_style.configure("face_border.TLabel", bordercolor=self.camera_border_color1)
+        # self.border_style.configure("face_border.TLabel", bordercolor=self.camera_border_color1,
+        #                             sunkencost=2)
+        # self.border_style.configure("license_border.TLabel", bordercolor=self.camera_border_color2,
+        #                             sunkencost=2)
+        #
+        # self.camera_label1 = ttk.Label(camera_container, borderwidth=5, relief="solid", style="face_border.TLabel")
         # self.border_style.configure("license_border.TLabel", bordercolor=self.camera_border_color2)
         #
-        # # Label to display the first camera feed
-        # self.camera_label1 = ttk.Label(camera_container, borderwidth=3, relief="solid", style="face_border.TLabel")
-        # self.camera_label1.pack(side=LEFT, padx=(0, 10))
+        # # # Label to display the first camera feed
+        # # self.camera_label2 = ttk.Label(camera_container, borderwidth=5, relief="solid", style="license_border.TLabel")
+        # # self.camera_label1.pack(side=LEFT, padx=(0, 10))
         #
-        # # Label to display the second camera feed
-        # self.camera_label2 = ttk.Label(camera_container, borderwidth=3, relief="solid", style="license_border.TLabel")
-        # self.camera_label2.pack(side=RIGHT)
-        #
+        # # # Label to display the second camera feed
+        # # self.camera_label2 = ttk.Label(camera_container, borderwidth=3, relief="solid", style="license_border.TLabel")
+        # # self.camera_label2.pack(side=RIGHT)
+        # #
         # # self.start_camera_feed(0, self.camera_label1)
         # # self.start_camera_feed(1, self.camera_label2)
         #
@@ -480,7 +515,7 @@ class SSystem(ttk.Frame):
         # profile_icon_path = "images/Profile_Icon.png"  # Replace with the path to your profile icon image
         # profile_icon_image = Image.open(profile_icon_path)
         # profile_icon_image = profile_icon_image.resize((250, 250), Image.Resampling.LANCZOS)
-        # self.profile_icon_exit = ImageTk.PhotoImage(profile_icon_image)
+        # self.profile_icon = ImageTk.PhotoImage(profile_icon_image)
         #
         # # Replace profile_icon_label with driver_image_label
         # self.driver_image_label = ttk.Label(profile_driver_frame, image=self.profile_icon, justify=CENTER)
@@ -507,7 +542,7 @@ class SSystem(ttk.Frame):
         self.master_window.after(1000, lambda: self.update_time_date(label))
 
     def update_driver_details(self):
-        if self.driver_info is not None and self.img_driver is not None and self.vehicle_info is not None:
+        if self.driver_info is not None and self.img_driver is not None and self.vehicle_info is not None and not self.not_matching:
 
             # avg_face_time = self.total_face_time / self.face_count
 
@@ -590,6 +625,8 @@ class SSystem(ttk.Frame):
         elif (self.most_common_license is not None and self.driver_info is not None and self.img_driver is not None
               and self.vehicle_info is None):
 
+            self.license_unauthorized = True
+
             self.states = 'focus'
 
             driver_name, driver_type, driver_id, driver_phone = self.driver_info[0]
@@ -610,6 +647,27 @@ class SSystem(ttk.Frame):
             self.license_recognition_enabled = False
 
             # self.display_assoc_vehicle()
+
+        # else:
+        #
+        #     driver_name, driver_type, driver_id, driver_phone = self.driver_info[0]
+        #     plate_number, vehicle_type, vehicle_color = self.vehicle_info[0]
+        #
+        #     self.driver_name.set(driver_name)
+        #     self.type.set(driver_type)
+        #     self.id_number.set(driver_id)
+        #     self.phone.set(driver_phone)
+        #     self.plate.set(plate_number)
+        #     self.vehicle_type.set(vehicle_type)
+        #     self.vehicle_color.set(vehicle_color)
+        #
+        #     # Display the driver's image
+        #     driver_image = ImageTk.PhotoImage(self.img_driver)
+        #     self.driver_image_label.configure(image=driver_image)
+        #     self.driver_image_label.image = driver_image  # Keep a reference to avoid garbage collection
+        #
+        #     self.face_recognition_enabled = False
+        #     self.license_recognition_enabled = False
 
     def setup_logs_tab(self, scrolled_frame_logs):
         container_frame = ttk.Frame(scrolled_frame_logs)
@@ -662,7 +720,6 @@ class SSystem(ttk.Frame):
                     )
                     face_thread.start()
 
-
                 except Exception as e:
                     print("Error in face recognition:", e)
 
@@ -706,6 +763,7 @@ class SSystem(ttk.Frame):
                         print(f"Authorized recognition time: {avg_time:.3f} seconds")
                     else:
                         self.not_match()
+                        self.not_matching = True
                         print("NOT MATCH")
                         end = time.time()
                         avg_time = end - face_start
@@ -786,7 +844,7 @@ class SSystem(ttk.Frame):
             for encode_face, face_location in zip(current_encode, current_face):
                 print("ENCODING")
                 top, right, bottom, left = face_location
-                matches = face_recognition.compare_faces(self.encode_list_known, encode_face)
+                matches = face_recognition.compare_faces(self.encode_list_known, encode_face, tolerance=0.5)
                 face_dis = face_recognition.face_distance(self.encode_list_known, encode_face)
 
                 matches_exit = face_recognition.compare_faces(self.un_encode_list_known, encode_face)
@@ -1210,6 +1268,8 @@ class SSystem(ttk.Frame):
 
         if okay is None:
             print("OK CLICKED")
+            self.display_assoc_driver()
+            self.display_assoc_vehicle()
             self.reset()
 
     def clock_in(self):
@@ -1254,8 +1314,8 @@ class SSystem(ttk.Frame):
             time_in_status = 1
             is_registered = 1
 
-            # database.insert_logs(id_number_value, plate_value, self.date,
-            #                      self.time_in,None, time_in_status, is_registered)
+            database.insert_logs(id_number_value, plate_value, self.date,
+                                 self.time_in,None, time_in_status, is_registered)
 
             self.table_view.insert_row(index=0,
                                        values=[driver_name_value, type_value, id_number_value, plate_value, phone_value,
@@ -1299,7 +1359,7 @@ class SSystem(ttk.Frame):
                                  self.time_in,
                                  None, time_in_status, is_registered)
 
-            self.table_view.table_views.insert_row(index=0,
+            self.table_view.insert_row(index=0,
                                        values=[driver_name_value, type_value, id_number_value, plate_value, phone_value,
                                                self.date,
                                                self.time_in, None, time_in_status, is_registered])

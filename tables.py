@@ -26,23 +26,22 @@ def driver_logs_summarized(table_frame2, id_number):
 
     # Fetch data from daily_logs, drivers, and vehicles tables
     c.execute('''
-            SELECT 
-                dl.date,
-                dl.plate_number,
-                COUNT(CASE WHEN dl.time_in IS NOT NULL THEN 1 END) AS entry_count,
-                COUNT(CASE WHEN dl.time_out IS NOT NULL THEN 1 END) AS exit_count
-            FROM daily_logs dl
-            JOIN drivers d ON dl.id_number = d.id_number
-            WHERE dl.id_number = ?
-            ORDER BY dl.date DESC
-        ''', (id_number,))
+        SELECT
+            dl.date,
+            COALESCE(SUM(CASE WHEN dl.time_in IS NOT NULL THEN 1 ELSE 0 END), 0) AS entry_count,
+            COALESCE(SUM(CASE WHEN dl.time_out IS NOT NULL THEN 1 ELSE 0 END), 0) AS exit_count
+        FROM daily_logs dl
+        JOIN drivers d ON dl.id_number = d.id_number
+        WHERE dl.id_number = ?
+        GROUP BY dl.date
+        ORDER BY dl.date DESC
+    ''', (id_number,))
 
     data_logs = c.fetchall()
     conn.close()
 
     coldata_logs = [
         {"text": "Date", "stretch": True},
-        {"text": "Vehicle", "stretch": True},
         {"text": "Entry Count", "stretch": True},
         {"text": "Exit Count", "stretch": True},
     ]
@@ -83,7 +82,7 @@ def driver_logs_summarized(table_frame2, id_number):
 
         # Inserting the children with time_in and time_out values
         for indi_log in indi_logs:
-            tree_view_logs.view.insert(item, 'end', values=('', '', indi_log[1], indi_log[2]), tags=('TButton',))
+            tree_view_logs.view.insert(item, 'end', values=(indi_log[0], indi_log[1], indi_log[2]), tags=('TButton',))
 
     return export_logs
 
@@ -155,13 +154,14 @@ def fetch_times(date):
     c = conn.cursor()
     times = []
 
-    c.execute("""SELECT time_in, time_out 
+    c.execute("""SELECT time_in, time_out, plate_number 
               FROM daily_logs 
               WHERE date = ?""", (date,))
 
     for row in c.fetchall():
         times.append(row[0])
         times.append(row[1])
+        times.append(row[2])
 
     return times
 

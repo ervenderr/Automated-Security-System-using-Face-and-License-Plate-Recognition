@@ -88,7 +88,7 @@ def fetch_all_logs():
         FROM daily_logs dl
         LEFT JOIN drivers d ON dl.id_number = d.id_number
         LEFT JOIN vehicles v ON dl.plate_number = v.plate_number
-        ORDER BY time(dl.time_in) DESC
+        ORDER BY dl.date DESC, time(dl.time_in) ASC
     ''')
 
     data_logs = c.fetchall()
@@ -117,7 +117,7 @@ def fetch_daily_logs():
         LEFT JOIN drivers d ON dl.id_number = d.id_number
         LEFT JOIN vehicles v ON dl.plate_number = v.plate_number
         WHERE dl.date = ?
-        ORDER BY time(dl.time_in) DESC
+        ORDER BY time(dl.time_in) ASC
     ''', (today,))
 
     data_logs = c.fetchall()
@@ -317,6 +317,15 @@ print(current_time)
 # insert_logs(111111, 'JAW9341', datess, current_time,
 #                                  current_time, 1, 1)
 
+def update_timeout(id_number, plate_number, new_timeout):
+    conn = sqlite3.connect('drivers.db')
+    c = conn.cursor()
+    c.execute("UPDATE daily_logs SET time_out = ? WHERE id_number = ? AND plate_number = ?",
+              (new_timeout, id_number, plate_number))
+    conn.commit()
+    conn.close()
+
+update_timeout(111111, "NBC1236", current_time)
 
 def delete(driver_id, plate_number):
     conn = sqlite3.connect('drivers.db')
