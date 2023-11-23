@@ -40,7 +40,7 @@ from database import *
 import pytesseract
 from unregistered_encoding import process_images
 
-pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+pytesseract.pytesseract.tesseract_cmd = r'G:\Program Files\Tesseract-OCR\tesseract.exe'
 
 # reader = easyocr.Reader(['en'], gpu=True)x
 # Load the YOLO model
