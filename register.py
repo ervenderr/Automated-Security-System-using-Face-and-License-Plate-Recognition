@@ -537,6 +537,18 @@ def create_driver(parent_tab):
     style = ttk.Style()
     style.configure("Treeview", rowheight=30, font=('Helvetica', 14, 'bold'))
 
+    def enable_fields(self):
+
+        if self.current_state == 'focus':
+            self.current_state = 'disabled'
+        else:
+            self.current_state = 'focus'
+
+        for widget in self.widgets.values():
+            widget.configure(state=self.current_state)
+
+        print(self.current_state)
+
     tree_view.view.bind("<ButtonRelease-1>", profile_page)
     # table_view_vehicles.bind("<ButtonRelease-1>", selected_vehicle_row)
 

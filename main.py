@@ -53,7 +53,7 @@ frame_queue = queue.Queue()
 
 
 # port = 'COM6'
-# pin = 10
+# pin = 10False
 # board = Arduino(port)
 #
 # board.digital[pin].mode = SERVO
@@ -62,6 +62,10 @@ frame_queue = queue.Queue()
 class SSystem(ttk.Frame):
     def __init__(self, master_window):
 
+        self.current_state = 'disabled'
+        self.widget = None
+        self.widgets = {}
+        self.form_input = None
         self.not_matching = False
         self.face_unauthorized = True
         self.license_unauthorized = True
@@ -233,8 +237,8 @@ class SSystem(ttk.Frame):
 
         # Check if the "Home" tab is selected, enable face recognition
         if current_tab_index == 0:
-            self.face_recognition_enabled = True
-            self.license_recognition_enabled = True
+            self.face_recognition_enabled = False
+            self.license_recognition_enabled = False
 
         elif current_tab_index == 1:
             self.face_recognition_enabled = False
@@ -265,10 +269,26 @@ class SSystem(ttk.Frame):
         time_date_frame.grid_columnconfigure(0, weight=1)
         self.border_style = Style(theme="superhero")
 
-        card_frame = ttk.Frame(camera_frame)
-        card_frame.grid(row=3, column=0, sticky="nsew", padx=20, pady=10)
-        card_frame.grid_rowconfigure(0, weight=1)
-        card_frame.grid_columnconfigure(0, weight=1)
+        card_frame = ttk.Frame(time_date_frame)
+        card_frame.grid(row=3, column=0, sticky="nsw")
+
+        total_entries_card = ttk.Frame(card_frame, borderwidth=1)
+        total_entries_card.grid(row=0, sticky="nw")
+
+        canvas = Canvas(total_entries_card, width=40, height=40, highlightthickness=0)
+        canvas.grid(row=0, column=0, rowspan=2, sticky="w")
+
+        canvas.create_rectangle(0, 0, 40, 15, fill="green")
+
+        total_entries_label = ttk.Label(total_entries_card, text="Authorized", font=("Helvetica", 13, "bold"),
+                                        anchor="w")
+        total_entries_label.grid(row=0, column=1, sticky="w", padx=(10, 0))
+
+        canvas.create_rectangle(0, 25, 45, 45, fill="red")
+
+        total_entries_label = ttk.Label(total_entries_card, text="Unauthorized", font=("Helvetica", 13, "bold"),
+                                        anchor="w")
+        total_entries_label.grid(row=1, column=1, sticky="w", padx=(10, 0))
 
         # Frame for displaying plate number
         plate_frame = ttk.LabelFrame(camera_frame, text='Daily logs', borderwidth=1, relief=RIDGE)
@@ -301,31 +321,6 @@ class SSystem(ttk.Frame):
         # Start updating the time and date label
         self.update_time_date(time_date_label)
 
-        # # Card for Total Entries
-        # total_entries_card = ttk.Frame(card_frame, borderwidth=1, relief=SOLID)
-        # total_entries_card.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
-        # total_entries_card.grid_rowconfigure(0, weight=1)
-        # total_entries_card.grid_columnconfigure(0, weight=1)
-        #
-        # total_entries_label = ttk.Label(total_entries_card, text="Total Entries", font=("Helvetica", 16, "bold"))
-        # total_entries_label.grid(row=0, column=0, pady=(5, 0))
-        #
-        # self.total_entries_value = ttk.Label(total_entries_card, text="0", font=("Helvetica", 24))
-        # self.total_entries_value.grid(row=1, column=0, pady=(0, 5))
-        #
-        # # Card for Total Visitors Entered
-        # total_visitors_card = ttk.Frame(card_frame, borderwidth=1, relief=SOLID, width=50)
-        # total_visitors_card.grid(row=0, column=1, padx=10, pady=10, sticky="nsew")
-        # total_visitors_card.grid_rowconfigure(0, weight=1)
-        # total_visitors_card.grid_columnconfigure(0, weight=1)
-        #
-        # total_visitors_label = ttk.Label(total_visitors_card, text="Total Visitors Entered",
-        #                                  font=("Helvetica", 16, "bold"))
-        # total_visitors_label.grid(row=0, column=0, pady=(5, 0))
-        #
-        # self.total_visitors_value = ttk.Label(total_visitors_card, text="0", font=("Helvetica", 24))
-        # self.total_visitors_value.grid(row=1, column=0, pady=(0, 5))
-
         self.daily_logs(plate_frame)
 
         self.camera_border_color1 = 'white'
@@ -348,7 +343,7 @@ class SSystem(ttk.Frame):
         self.camera_label2.pack(side=RIGHT)
 
         self.start_camera_feed(1, self.camera_label1)
-        self.start_camera_feed(0, self.camera_label2)
+        self.start_camera_feed(2, self.camera_label2)
 
         # Separator line between camera feeds and driver details
         separator = ttk.Separator(container_frame, orient=VERTICAL)
@@ -570,7 +565,6 @@ class SSystem(ttk.Frame):
         # unauthorized
         elif (self.most_common_license is not None and self.img_driver is not None and self.driver_info is None
               and self.vehicle_info is None):
-            self.states = 'focus'
 
             print("vinfo: ", self.vehicle_info)
             print("dinfo: ", self.driver_info)
@@ -595,7 +589,6 @@ class SSystem(ttk.Frame):
         # face unauthorized
         elif self.driver_info is None and self.img_driver is not None and self.vehicle_info is not None:
             self.face_unauthorized = True
-            self.states = 'focus'
 
             plate_number, vehicle_type, vehicle_color = self.vehicle_info[0]
 
@@ -627,7 +620,6 @@ class SSystem(ttk.Frame):
 
             self.license_unauthorized = True
 
-            self.states = 'focus'
 
             driver_name, driver_type, driver_id, driver_phone = self.driver_info[0]
 
@@ -723,7 +715,7 @@ class SSystem(ttk.Frame):
                 except Exception as e:
                     print("Error in face recognition:", e)
 
-            if self.license_recognition_enabled and camera_id == 0:
+            if self.license_recognition_enabled and camera_id == 2:
                 self.license_cam = frame
 
                 self.license_start = time.time()
@@ -1049,13 +1041,12 @@ class SSystem(ttk.Frame):
         frame_queue.put(self.license_cam)
 
     def create_form_entry(self, container, label, variable):
-
         form_field_container = ttk.Frame(container)
         form_field_container.pack(fill=X, pady=5)
 
         entry_style = ttk.Style()
-        entry_style.map("TEntry", foreground=[("disabled", "white")])
         entry_var = variable
+        var_name = str(variable)  # Use the variable name as a string
 
         form_field_label = ttk.Label(master=form_field_container, text=label, width=15)
         form_field_label.grid(row=0, column=0, padx=12, pady=(0, 5), sticky="w")
@@ -1063,9 +1054,9 @@ class SSystem(ttk.Frame):
         if variable is self.plate:
             form_input = ttk.Entry(master=form_field_container, textvariable=entry_var, font=('Helvetica', 13))
             form_input.grid(row=1, column=0, padx=5, pady=(0, 5), sticky="ew")
+            self.widgets[var_name] = form_input
 
             if self.face_unauthorized:
-
                 plate_btn = ttk.Button(master=form_field_container, text="Find", bootstyle="danger",
                                        command=self.display_assoc_driver)
                 plate_btn.grid(row=1, column=1, padx=(5, 0), pady=(0, 5))
@@ -1073,38 +1064,27 @@ class SSystem(ttk.Frame):
                 form_field_container.grid_columnconfigure(0, weight=1)
                 form_field_container.grid_columnconfigure(1, weight=0)
 
-        if variable is self.id_number:
-            id_input = ttk.Entry(master=form_field_container, textvariable=entry_var, font=('Helvetica', 13))
-            id_input.grid(row=1, column=0, padx=5, pady=(0, 5), sticky="ew")
-
-            if self.license_unauthorized:
-
-                id_btn = ttk.Button(master=form_field_container, text="Find", bootstyle="danger",
-                                    command=self.display_assoc_vehicle)
-                id_btn.grid(row=1, column=1, padx=(5, 0), pady=(0, 5))
-
-                form_field_container.grid_columnconfigure(0, weight=1)
-                form_field_container.grid_columnconfigure(1, weight=0)
+        # ... (similar modifications for other cases)
 
         if variable is self.type:
-            # If the variable is self.type, create a Combobox instead of an Entry widget
-            category = ["Staff", "Faculty", "Independents", "Graduate Students"]  # Replace with your options
+            category = ["Staff", "Faculty", "Independents", "Graduate Students"]
             combobox = ttk.Combobox(master=form_field_container, textvariable=entry_var, font=('Helvetica', 13),
-                                    state=self.states, values=category)
+                                    state=self.current_state, values=category)
             combobox.grid(row=1, column=0, padx=5, pady=(0, 5), sticky="ew")
-            widget = combobox
+            self.widgets[var_name] = combobox
+            self.widget = combobox
         else:
-            # For other variables, create an Entry widget
-            form_input = ttk.Entry(master=form_field_container, textvariable=entry_var, font=('Helvetica', 13),
-                                   state=self.states)
-            form_input.grid(row=1, column=0, padx=5, pady=(0, 5), sticky="ew")
-            widget = form_input
+            self.form_input = ttk.Entry(master=form_field_container, textvariable=entry_var, font=('Helvetica', 13),
+                                        state=self.current_state)
+            self.form_input.grid(row=1, column=0, padx=5, pady=(0, 5), sticky="ew")
+            self.widgets[var_name] = self.form_input
+            self.widget = self.form_input
 
-        # Make the columns of form_field_container expand relative to the container's width
-        form_field_container.grid_columnconfigure(0, weight=1)  # Set weight for column 0
+        form_field_container.grid_columnconfigure(0, weight=1)
 
+        print('selfstates:', self.states)
 
-        return widget
+        return self.widgets[var_name]
 
     def create_buttonbox(self, container):
         button_container = ttk.Frame(container)
@@ -1115,8 +1095,8 @@ class SSystem(ttk.Frame):
 
         cancel_btn = ttk.Button(
             master=button_container,
-            text="CANCEL",
-            command=self.on_cancel,
+            text="CLEAR",
+            command=self.reset,
             bootstyle=DANGER,
             style=btn_style
         )
@@ -1124,8 +1104,8 @@ class SSystem(ttk.Frame):
 
         submit_btn = ttk.Button(
             master=button_container,
-            text="CLEAR",
-            command=self.reset,
+            text="UPDATE",
+            command=self.enable_fields,
             bootstyle=SUCCESS,
             style=btn_style
         )
@@ -1219,8 +1199,17 @@ class SSystem(ttk.Frame):
             self.cap.release()
         self.quit()
 
-    def create_table(self):
-        return
+    def enable_fields(self):
+
+        if self.current_state == 'focus':
+            self.current_state = 'disabled'
+        else:
+            self.current_state = 'focus'
+
+        for widget in self.widgets.values():
+            widget.configure(state=self.current_state)
+
+        print(self.current_state)
 
     def register_driver(self):
         return
