@@ -6,6 +6,7 @@ from tkinter.font import nametofont
 
 # import torch
 import cv2
+import tkinter as tk
 from tkinter import *
 
 import face_recognition
@@ -139,10 +140,10 @@ class SSystem(ttk.Frame):
         self.vehicle_color = ttk.StringVar(value="")
         self.plate = ttk.StringVar(value="")
         ph_tz = pytz.timezone('Asia/Manila')
-        current_time = datetime.datetime.now(tz=ph_tz).strftime("%H:%M:%S")  # Current time
+        current_time = datetime.datetime.now(tz=ph_tz).strftime("%I:%M %p")
         self.time_in = current_time
         self.time_out = current_time
-        self.date = self.date = datetime.date.today().strftime("%Y-%m-%d")
+        self.date = self.date = datetime.date.today().strftime("%a, %b-%d-%Y")
         self.profile_icon_path = ""
         self.data = []
         self.img_driver = []
@@ -165,16 +166,23 @@ class SSystem(ttk.Frame):
         un_file.close()
         self.un_encode_list_known, self.un_driver_ids = un_encode_with_ids
 
+        notebook_style = ttk.Style()
+        notebook_style.configure('TNotebook.Tab', font=('Helvetica', 14, 'bold'))
+
         # Create the navigation bar
-        self.nav_bar = ttk.Notebook(self)
+        self.nav_bar = ttk.Notebook(self, bootstyle='dark')
         self.nav_bar.pack(fill=BOTH, expand=YES, padx=5)
+        self.nav_bar.configure(height=40, padding=10)
+
+        icon_image_path = 'Images/vehicle.png'
+        prof_img = ImageTk.PhotoImage(file=r'Images/vehicle.png')
+        icon_image = Image.open(icon_image_path)
+        icon_image = icon_image.resize((20, 20), Image.Resampling.LANCZOS)
+        real_icon = ImageTk.PhotoImage(icon_image)
 
         # Home Tab
-
-        vehicle = PhotoImage(file=r'Images/menu.png')
-
         home_tab = ttk.Frame(self.nav_bar)
-        self.nav_bar.add(home_tab, text="ENTRY", image=vehicle, compound='right')
+        self.nav_bar.add(home_tab, text="ENTRY", image=real_icon, compound=BOTTOM)
         self.tab_frames.append(home_tab)
 
         scrolled_frame = ScrolledFrame(home_tab, width=1400, height=700, autohide=True, bootstyle='dark round')
@@ -184,7 +192,7 @@ class SSystem(ttk.Frame):
 
         # Exit Tab
         exit_tab = ttk.Frame(self.nav_bar)
-        self.nav_bar.add(exit_tab, text="EXIT", image=vehicle, compound='right')
+        self.nav_bar.add(exit_tab, text="EXIT", image=prof_img, compound=ttk.BOTTOM)
         self.tab_frames.append(exit_tab)
 
         scrolled_exit_frame = ScrolledFrame(exit_tab, width=1400, height=700, autohide=True, bootstyle='dark round')
@@ -532,7 +540,7 @@ class SSystem(ttk.Frame):
 
     def update_time_date(self, label):
         ph_tz = pytz.timezone('Asia/Manila')
-        current_time = datetime.datetime.now(tz=ph_tz).strftime("%a, %Y-%m-%d %I:%M:%S %p")
+        current_time = datetime.datetime.now(tz=ph_tz).strftime("%a, %b-%d-%Y %I:%M:%S %p")
         label.config(text=current_time)
         self.master_window.after(1000, lambda: self.update_time_date(label))
 
@@ -1064,7 +1072,17 @@ class SSystem(ttk.Frame):
                 form_field_container.grid_columnconfigure(0, weight=1)
                 form_field_container.grid_columnconfigure(1, weight=0)
 
-        # ... (similar modifications for other cases)
+        if variable is self.id_number:
+            id_input = ttk.Entry(master=form_field_container, textvariable=entry_var, font=('Helvetica', 13))
+            id_input.grid(row=1, column=0, padx=5, pady=(0, 5), sticky="ew")
+
+            if self.license_unauthorized:
+                id_btn = ttk.Button(master=form_field_container, text="Find", bootstyle="danger",
+                                    command=self.display_assoc_vehicle)
+                id_btn.grid(row=1, column=1, padx=(5, 0), pady=(0, 5))
+
+                form_field_container.grid_columnconfigure(0, weight=1)
+                form_field_container.grid_columnconfigure(1, weight=0)
 
         if variable is self.type:
             category = ["Staff", "Faculty", "Independents", "Graduate Students"]
@@ -1085,6 +1103,15 @@ class SSystem(ttk.Frame):
         print('selfstates:', self.states)
 
         return self.widgets[var_name]
+
+    def entry_labels(self, container):
+        form_field_container = ttk.Frame(container)
+        form_field_container.pack(fill=X, pady=5)
+
+        name_label = ttk.Label(container, text="Name:")
+        name_label.pack(padx=5, pady=5, fill=BOTH)
+        name_entry = ttk.Label(container, font=('Helvetica', 13, 'bold'))
+        name_entry.pack(padx=5, pady=5, fill=BOTH)
 
     def create_buttonbox(self, container):
         button_container = ttk.Frame(container)

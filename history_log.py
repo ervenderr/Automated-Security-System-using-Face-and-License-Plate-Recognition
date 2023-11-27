@@ -1,10 +1,4 @@
-import base64
-import datetime
-import os
-
 import cv2
-import numpy as np
-import pytz
 import ttkbootstrap as ttk
 from ttkbootstrap.constants import *
 from PIL import Image, ImageTk
@@ -13,11 +7,9 @@ from ttkbootstrap.icons import Icon
 from ttkbootstrap.tableview import Tableview
 from ttkbootstrap import Style
 from ttkbootstrap.toast import ToastNotification
-
 import EncodeGenerator
 import database
 from database import *
-from tkinter import filedialog
 
 profile_icon = None
 DEFAULT_PROFILE_ICON_PATH = "images/Profile_Icon.png"
@@ -73,7 +65,7 @@ def history_logs(parent_tab):
 
     def update_time_date(label):
         ph_tz = pytz.timezone('Asia/Manila')
-        current_time = datetime.datetime.now(tz=ph_tz).strftime("%a, %Y-%m-%d %I:%M:%S %p")
+        current_time = datetime.datetime.now(tz=ph_tz).strftime("%a, %b-%d-%Y %I:%M:%S %p")
         label.config(text=current_time)
         parent_tab.after(1000, lambda: update_time_date(label))
 

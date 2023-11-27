@@ -1,29 +1,12 @@
-import base64
-import os
-
-from ttkbootstrap.dialogs import MessageDialog, Messagebox
+from ttkbootstrap.dialogs import Messagebox
 from ttkbootstrap.icons import Icon
-from ttkbootstrap.validation import add_validation, _validate_text
-
-import database
-import datetime
-
 import cv2
-import numpy as np
-import pytz
-import ttkbootstrap as ttk
-from ttkbootstrap.constants import *
-from PIL import Image, ImageTk
-from ttkbootstrap.tableview import Tableview
-from ttkbootstrap import Style
 from ttkbootstrap.toast import ToastNotification
-
 import EncodeGenerator
 from database import *
-from tkinter import filedialog
-
 from tables import *
 from tkinter import ttk
+import xlsxwriter
 
 profile_icon = None
 DEFAULT_PROFILE_ICON_PATH = "images/Profile_Icon.png"
@@ -34,6 +17,7 @@ ph_tz = pytz.timezone('Asia/Manila')
 current_time = datetime.datetime.now(tz=ph_tz).strftime("%H:%M:%S")
 
 page_count = 0
+update_count = 0
 id_number = None
 
 conn = sqlite3.connect('drivers.db')
@@ -42,10 +26,12 @@ c = conn.cursor()
 img = None
 copied_img_file = None
 id_nums = None
+current_state = True
+
 
 def create_driver(parent_tab):
+    global id_number, id_nums, current_state
 
-    global id_number, id_nums
     def selectPic():
         global img
 
@@ -68,7 +54,7 @@ def create_driver(parent_tab):
             # Capture an image when the 'Space' key is pressed
             if cv2.waitKey(1) & 0xFF == ord(' '):
                 img = frame
-                img = cv2.resize(img, (250, 250), interpolation=cv2.INTER_AREA)
+                img = cv2.resize(img, (200, 200), interpolation=cv2.INTER_AREA)
                 filename = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)  # Convert from BGR to RGB for PIL
                 img_pil = Image.fromarray(filename)
                 img_pil_tk = ImageTk.PhotoImage(img_pil)
@@ -85,10 +71,9 @@ def create_driver(parent_tab):
 
     def update_time_date(label):
         ph_tz = pytz.timezone('Asia/Manila')
-        current_time = datetime.datetime.now(tz=ph_tz).strftime("%a, %Y-%m-%d %I:%M:%S %p")
+        current_time = datetime.datetime.now(tz=ph_tz).strftime("%a, %b-%d-%Y %I:%M:%S %p")
         label.config(text=current_time)
         parent_tab.after(1000, lambda: update_time_date(label))
-
 
     drivers_data = fetch_all_driver()
     vehicles_data = fetch_all_vehicle()
@@ -196,38 +181,16 @@ def create_driver(parent_tab):
                           icon=Icon.error)
             print('messad')
 
-    def clear():
-        id_entry.delete(0, END)
-        name_entry.delete(0, END)
-        type_entry.delete(0, END)
-        plate_entry.delete(0, END)
-        phone_entry.delete(0, END)
-        vehicle_type_entry.delete(0, END)
-        vehicle_color_entry.delete(0, END)
-        vehicle_drivers_entry.delete(0, END)
+    def print_table():
 
-        driver_image_label.image = default_profile_icon
-        driver_image_label.config(image=driver_image_label.image)
-
-    def update_driver():
-
-        pass
-
-    def delete_driver():
-        pass
+        tree_view.export_all_records()
 
     def selected_driver_row():
         global copied_img_file
         global driver_image
         global id_nums
 
-        id_entry.delete(0, END)
-        name_entry.delete(0, END)
-        type_entry.delete(0, END)
-        plate_entry.delete(0, END)
-        phone_entry.delete(0, END)
-        vehicle_type_entry.delete(0, END)
-        vehicle_color_entry.delete(0, END)
+        clear()
 
         logs_data = fetch_all_logs()
 
@@ -260,6 +223,11 @@ def create_driver(parent_tab):
 
         if driver_info is not None:
 
+            name_text.configure(text=values[0])
+            type_text.configure(text=values[1])
+            id_text.configure(text=values[2])
+            phone_text.configure(text=values[3])
+
             name_entry.insert(0, values[0])
             type_entry.insert(0, values[1])
             id_entry.insert(0, values[2])
@@ -274,7 +242,7 @@ def create_driver(parent_tab):
 
             copied_img_file = non_driver_image.copy()
 
-            driver_image = non_driver_image.resize((250, 250), Image.Resampling.LANCZOS)
+            driver_image = non_driver_image.resize((200, 200), Image.Resampling.LANCZOS)
 
             driver_image = ImageTk.PhotoImage(driver_image)
 
@@ -294,7 +262,6 @@ def create_driver(parent_tab):
         driver_image_label.config(image=driver_image)
         driver_image_label.image = driver_image
 
-
     def remove_id():
         pass
 
@@ -302,10 +269,17 @@ def create_driver(parent_tab):
     parent_tab.grid_rowconfigure(0, weight=1)
 
     # Profile driver frame
-    profile_driver_frame = ttk.Frame(parent_tab, width=250)
+    profile_driver_frame = ttk.Frame(parent_tab, width=200)
     profile_driver_frame.grid(row=0, column=1, sticky="nsew", padx=20, pady=20)
     profile_driver_frame.grid_rowconfigure(0, weight=1)
     profile_driver_frame.grid_columnconfigure(0, weight=1)
+
+    # Frame for driver_image_label
+    image_frame = ttk.Frame(profile_driver_frame)
+    image_frame.pack(pady=(10, 0))
+
+    profile_frame = ttk.Frame(profile_driver_frame)
+    profile_frame.pack(pady=(10, 0))
 
     separator = ttk.Separator(parent_tab, orient=VERTICAL)
     separator.grid(row=0, column=2, rowspan=2, sticky="ns")
@@ -358,6 +332,47 @@ def create_driver(parent_tab):
     table_frame.grid_rowconfigure(1, weight=1)
     table_frame.grid_columnconfigure(0, weight=1)
 
+    profile_frame2 = ttk.Frame(profile_driver_frame)
+
+    update_pages = [profile_frame, profile_frame2]
+
+    def clear():
+        id_text.configure(text='')
+        name_text.configure(text='')
+        type_text.configure(text='')
+        plate_text.configure(text='')
+        phone_text.configure(text='')
+        vehicle_type_text.configure(text='')
+        vehicle_color_text.configure(text='')
+
+        id_entry.delete(0, END)
+        name_entry.delete(0, END)
+        type_entry.delete(0, END)
+        plate_entry.delete(0, END)
+        phone_entry.delete(0, END)
+        vehicle_type_entry.delete(0, END)
+        vehicle_color_entry.delete(0, END)
+
+        driver_image_label.image = default_profile_icon
+        driver_image_label.config(image=driver_image_label.image)
+
+    def update_driver():
+        global current_state, update_count
+
+        # profile_frame.pack_forget()
+
+        if not update_count > len(update_pages) - 2:
+            for page in update_pages:
+                page.pack_forget()
+
+            update_count += 1
+            page = update_pages[update_count]
+            page.pack(pady=(10, 0))
+
+            # driver_details(profile_frame2)
+
+        current_state = True
+        print(current_state)
 
     # Daily logs table
     table_frame2 = ttk.Frame(parent_tab)
@@ -428,22 +443,24 @@ def create_driver(parent_tab):
 
             export_vehicles.view.bind("<ButtonRelease-1>", selected_vehicle_row)
 
-
     def list_profile_page():
-        global page_count
+        global page_count, update_count
 
-        if not page_count == 2:
+        if not page_count == 2 and not update_count == 2:
             for page in pages:
                 page.grid_forget()
+                profile_frame2.pack_forget()
 
             page_count -= 1
+            update_count -= 1
             page = pages[page_count]
             page.grid(row=0, column=3, sticky="nsew", padx=20, pady=20)
             table_frame.grid_rowconfigure(0, weight=1)
             table_frame.grid_columnconfigure(0, weight=1)
 
-        clear()
+            profile_frame.pack(pady=(10, 0))
 
+        clear()
 
     # Configure row and column weights for plate_frame
     table_frame2.grid_rowconfigure(0, weight=1)
@@ -451,66 +468,69 @@ def create_driver(parent_tab):
 
     # Profile icon label
     default_profile_icon_image = Image.open(DEFAULT_PROFILE_ICON_PATH)
-    default_profile_icon_image = default_profile_icon_image.resize((250, 250), Image.Resampling.LANCZOS)
+    default_profile_icon_image = default_profile_icon_image.resize((200, 200), Image.Resampling.LANCZOS)
     default_profile_icon = ImageTk.PhotoImage(default_profile_icon_image)
 
     # Replace profile_icon_label with driver_image_label
-    driver_image_label = ttk.Label(profile_driver_frame, image=default_profile_icon)
-    driver_image_label.pack(pady=(10, 30))
+    driver_image_label = ttk.Label(image_frame, image=default_profile_icon)
+    driver_image_label.pack(pady=(10, 10))
 
     instruction_text = "Driver Details: "
-    instruction = ttk.Label(profile_driver_frame, text=instruction_text, width=50)
+    instruction = ttk.Label(profile_frame, text=instruction_text, width=50)
     instruction.pack(fill=X, pady=10)
 
-    name_label = ttk.Label(profile_driver_frame, text="Name:")
+    name_label = ttk.Label(profile_frame, text="Name:")
     name_label.pack(padx=5, pady=5, fill=BOTH)
-    name_entry = ttk.Entry(profile_driver_frame, font=('Helvetica', 13))
-    name_entry.pack(padx=5, pady=5, fill=BOTH)
-    add_validation(name_entry, _validate_text)
+    name_text = ttk.Label(profile_frame, font=('Helvetica', 15, 'bold'), foreground='black',
+                           borderwidth=0, relief="solid", background='#ffffff', padding=(5, 1))
+    name_text.pack(padx=5, pady=5, fill=BOTH)
 
-    type_label = ttk.Label(profile_driver_frame, text="Category:")
+    type_label = ttk.Label(profile_frame, text="Category:")
     type_label.pack(padx=5, pady=5, fill=BOTH)
     category = ["Staff", "Faculty", "Independents", "Graduate Students"]  # Replace with your options
-    type_entry = ttk.Combobox(master=profile_driver_frame, font=('Helvetica', 13), values=category)
-    type_entry.pack(padx=5, pady=5, fill=BOTH)
+    type_text = ttk.Label(profile_frame, font=('Helvetica', 15, 'bold'), foreground='black',
+                           borderwidth=0, relief="solid", background='white', padding=3)
+    type_text.pack(padx=5, pady=5, fill=BOTH)
 
-    id_label = ttk.Label(profile_driver_frame, text="ID:")
+    id_label = ttk.Label(profile_frame, text="ID:")
     id_label.pack(padx=5, pady=5, fill=BOTH)
-    id_entry = ttk.Entry(profile_driver_frame, font=('Helvetica', 13))
-    id_entry.pack(padx=5, pady=5, fill=BOTH)
+    id_text = ttk.Label(profile_frame, font=('Helvetica', 15, 'bold'), foreground='black',
+                           borderwidth=0, relief="solid", background='white', padding=3)
+    id_text.pack(padx=5, pady=5, fill=BOTH)
 
-    phone_label = ttk.Label(profile_driver_frame, text="Phone:")
+    phone_label = ttk.Label(profile_frame, text="Phone:")
     phone_label.pack(padx=5, pady=5, fill=BOTH)
-    phone_entry = ttk.Entry(profile_driver_frame, font=('Helvetica', 13))
-    phone_entry.pack(padx=5, pady=5, fill=BOTH)
+    phone_text = ttk.Label(profile_frame, font=('Helvetica', 15, 'bold'), foreground='black',
+                           borderwidth=0, relief="solid", background='white', padding=3)
+    phone_text.pack(padx=5, pady=5, fill=BOTH)
 
     instruction_text2 = "Vehicle Details: "
-    instruction2 = ttk.Label(profile_driver_frame, text=instruction_text2)
+    instruction2 = ttk.Label(profile_frame, text=instruction_text2)
     instruction2.pack(fill=X, pady=(20, 5))
 
-    plate_label = ttk.Label(profile_driver_frame, text="Plate number:")
+    plate_label = ttk.Label(profile_frame, text="Plate number:")
     plate_label.pack(padx=5, pady=5, fill=BOTH)
-    plate_entry = ttk.Entry(profile_driver_frame, font=('Helvetica', 13))
-    plate_entry.pack(padx=5, pady=5, fill=BOTH)
+    plate_text = ttk.Label(profile_frame, font=('Helvetica', 15, 'bold'), foreground='black',
+                           borderwidth=0, relief="solid", background='white', padding=3)
+    plate_text.pack(padx=5, pady=5, fill=BOTH)
 
-    vehicle_type_label = ttk.Label(profile_driver_frame, text="Vehicle type:")
+    vehicle_type_label = ttk.Label(profile_frame, text="Vehicle type:")
     vehicle_type_label.pack(padx=5, pady=5, fill=BOTH)
-    vehicle_type_entry = ttk.Entry(profile_driver_frame, font=('Helvetica', 13))
-    vehicle_type_entry.pack(padx=5, pady=5, fill=BOTH)
+    vehicle_type_text = ttk.Label(profile_frame, font=('Helvetica', 15, 'bold'), foreground='black',
+                           borderwidth=0, relief="solid", background='white', padding=3)
+    vehicle_type_text.pack(padx=5, pady=5, fill=BOTH)
 
-    vehicle_color_label = ttk.Label(profile_driver_frame, text="Vehicle color:")
+    vehicle_color_label = ttk.Label(profile_frame, text="Vehicle color:")
     vehicle_color_label.pack(padx=5, pady=5, fill=BOTH)
-    vehicle_color_entry = ttk.Entry(profile_driver_frame, font=('Helvetica', 13))
-    vehicle_color_entry.pack(padx=5, pady=5, fill=BOTH)
+    vehicle_color_text = ttk.Label(profile_frame, font=('Helvetica', 15, 'bold'), foreground='black',
+                           borderwidth=0, relief="solid", background='white', padding=3)
+    vehicle_color_text.pack(padx=5, pady=5, fill=BOTH)
 
-    vehicle_drivers = ttk.Label(profile_driver_frame, text="Authorized Drivers:")
-    vehicle_drivers.pack(padx=5, pady=5, fill=BOTH)
-    vehicle_drivers_entry = ttk.Entry(profile_driver_frame, font=('Helvetica', 13))
-    vehicle_drivers_entry.pack(padx=5, pady=5, fill=BOTH)
+    # driver labels
 
     anchors = ttk.Style().configure('TButton', anchor='SW')
 
-    insert_image_button = ttk.Button(profile_driver_frame, text="Insert Image", bootstyle=SUCCESS, style=anchors)
+    insert_image_button = ttk.Button(profile_frame, text="Insert Image", bootstyle=SUCCESS, style=anchors)
     insert_image_button.pack(padx=5, pady=(10), side=LEFT)
     insert_image_button['command'] = selectPic
 
@@ -520,37 +540,91 @@ def create_driver(parent_tab):
     crud_frame.grid_rowconfigure(0, weight=1)
     crud_frame.grid_columnconfigure(0, weight=1)
 
+    button_style = ttk.Style()
+    button_style.configure("TButton", font=('Helvetica', 12, 'bold'))
+
+    driver_image = Image.open('Images/save-icon.png')
+    img_save = driver_image.resize((30, 30), Image.Resampling.LANCZOS)
+    save_icon = ImageTk.PhotoImage(img_save)
+
     # Add CRUD buttons
     create_button = ttk.Button(crud_frame, text="SAVE", command=save_driver, bootstyle=SUCCESS)
     take_photo = ttk.Button(crud_frame, text="TAKE A PHOTO", command=selectPic, bootstyle=SUCCESS)
     update_button = ttk.Button(crud_frame, text="UPDATE", command=update_driver, bootstyle=PRIMARY)
     clear_button = ttk.Button(crud_frame, text="CLEAR", command=clear, bootstyle=PRIMARY)
-    delete_button = ttk.Button(crud_frame, text="DELETE", command=profile_page, bootstyle=DANGER)
+    delete_button = ttk.Button(crud_frame, text="PRINT", command=print_table, bootstyle=PRIMARY)
 
     # Pack the buttons
     create_button.pack(side=LEFT, padx=10, pady=10)
-    take_photo.pack(side=LEFT, padx=10, pady=10)
     update_button.pack(side=LEFT, padx=10, pady=10)
+    take_photo.pack(side=LEFT, padx=10, pady=10)
     clear_button.pack(side=LEFT, padx=10, pady=10)
     delete_button.pack(side=LEFT, padx=10, pady=10)
 
     style = ttk.Style()
     style.configure("Treeview", rowheight=30, font=('Helvetica', 14, 'bold'))
 
-    def enable_fields(self):
 
-        if self.current_state == 'focus':
-            self.current_state = 'disabled'
-        else:
-            self.current_state = 'focus'
+    # ENTRIES
 
-        for widget in self.widgets.values():
-            widget.configure(state=self.current_state)
+    instruction_text = "Driver Detailss: "
+    instruction = ttk.Label(profile_frame2, text=instruction_text, width=50)
+    instruction.pack(fill=X, pady=10)
 
-        print(self.current_state)
+    name_label = ttk.Label(profile_frame2, text="Name:")
+    name_label.pack(padx=5, pady=5, fill=BOTH)
+    name_entry = ttk.Entry(profile_frame2, font=('Helvetica', 13))
+    name_entry.pack(padx=5, pady=5, fill=BOTH)
+
+    type_label = ttk.Label(profile_frame2, text="Category:")
+    type_label.pack(padx=5, pady=5, fill=BOTH)
+    category = ["Staff", "Faculty", "Independents", "Graduate Students"]  # Replace with your options
+    type_entry = ttk.Combobox(master=profile_frame2, font=('Helvetica', 13), values=category)
+    type_entry.pack(padx=5, pady=5, fill=BOTH)
+
+    id_label = ttk.Label(profile_frame2, text="ID:")
+    id_label.pack(padx=5, pady=5, fill=BOTH)
+    id_entry = ttk.Entry(profile_frame2, font=('Helvetica', 13))
+    id_entry.pack(padx=5, pady=5, fill=BOTH)
+
+    phone_label = ttk.Label(profile_frame2, text="Phone:")
+    phone_label.pack(padx=5, pady=5, fill=BOTH)
+    phone_entry = ttk.Entry(profile_frame2, font=('Helvetica', 13))
+    phone_entry.pack(padx=5, pady=5, fill=BOTH)
+
+    instruction_text2 = "Vehicle Details: "
+    instruction2 = ttk.Label(profile_frame2, text=instruction_text2)
+    instruction2.pack(fill=X, pady=(20, 5))
+
+    plate_label = ttk.Label(profile_frame2, text="Plate number:")
+    plate_label.pack(padx=5, pady=5, fill=BOTH)
+    plate_entry = ttk.Entry(profile_frame2, font=('Helvetica', 13))
+    plate_entry.pack(padx=5, pady=5, fill=BOTH)
+
+    vehicle_type_label = ttk.Label(profile_frame2, text="Vehicle type:")
+    vehicle_type_label.pack(padx=5, pady=5, fill=BOTH)
+    vehicle_type_entry = ttk.Entry(profile_frame2, font=('Helvetica', 13))
+    vehicle_type_entry.pack(padx=5, pady=5, fill=BOTH)
+
+    vehicle_color_label = ttk.Label(profile_frame2, text="Vehicle color:")
+    vehicle_color_label.pack(padx=5, pady=5, fill=BOTH)
+    vehicle_color_entry = ttk.Entry(profile_frame2, font=('Helvetica', 13))
+    vehicle_color_entry.pack(padx=5, pady=5, fill=BOTH)
+
+    def enable_fields(e):
+
+        name_entry.configure(text='Erven Idjad')
+
+        # if self.current_state == 'focus':
+        #     self.current_state = 'disabled'
+        # else:
+        #     self.current_state = 'focus'
+        #
+        # for widget in self.widgets.values():
+        #     widget.configure(state=self.current_state)
+        #
+        # print(self.current_state)
 
     tree_view.view.bind("<ButtonRelease-1>", profile_page)
     # table_view_vehicles.bind("<ButtonRelease-1>", selected_vehicle_row)
-
-
 

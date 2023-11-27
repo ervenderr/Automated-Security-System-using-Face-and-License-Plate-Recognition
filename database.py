@@ -296,7 +296,7 @@ def are_associated(driver_id, plate_number):
 
 # INSERT QUERIES:
 ph_tz = pytz.timezone('Asia/Manila')
-datess = datetime.date.today().strftime("%Y-%m-%d")
+datess = datetime.date.today().strftime("%a, %b-%d-%Y")
 current_time = datetime.datetime.now(tz=ph_tz).strftime("%I:%M %p")
 
 
@@ -312,7 +312,7 @@ def insert_logs(id_number, plate_number, date, time_in, time_out, time_in_status
     conn.commit()
     conn.close()
 
-print(current_time)
+print(datess)
 
 # insert_logs(111111, 'JAW9341', datess, current_time,
 #                                  current_time, 1, 1)
@@ -320,12 +320,14 @@ print(current_time)
 def update_timeout(id_number, plate_number, new_timeout):
     conn = sqlite3.connect('drivers.db')
     c = conn.cursor()
-    c.execute("UPDATE daily_logs SET time_out = ? WHERE id_number = ? AND plate_number = ?",
+    c.execute("UPDATE drivers SET date = ? WHERE date = ? AND id_number = ?",
               (new_timeout, id_number, plate_number))
     conn.commit()
     conn.close()
 
-update_timeout(111111, "NBC1236", current_time)
+# update_timeout('2023-11-21', 111111, datess)
+# update_timeout('2023-11-22', 232421, datess)
+# update_timeout('2023-11-22', 656565, datess)
 
 def delete(driver_id, plate_number):
     conn = sqlite3.connect('drivers.db')

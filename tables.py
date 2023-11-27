@@ -1,7 +1,7 @@
 import datetime
 import sqlite3
 from tkinter.font import nametofont
-
+from PIL import Image, ImageTk
 import ttkbootstrap as ttk
 from ttkbootstrap.constants import *
 from ttkbootstrap.tableview import Tableview
@@ -11,6 +11,7 @@ import database
 tree_view_logs = None
 table_views = None
 all_table_logs = None
+DEFAULT_PROFILE_ICON_PATH = "images/Profile_Icon.png"
 
 
 def driver_logs_summarized(table_frame2, id_number):
@@ -199,3 +200,50 @@ def all_logs(table_frame):
     all_table_view.load_table_data()
 
     all_table_logs = all_table_view
+
+
+def driver_details(profile_driver_frame):
+
+    instruction_text = "Driver Detailss: "
+    instruction = ttk.Label(profile_driver_frame, text=instruction_text, width=50)
+    instruction.pack(fill=X, pady=10)
+
+    name_label = ttk.Label(profile_driver_frame, text="Name:")
+    name_label.pack(padx=5, pady=5, fill=BOTH)
+    name_entry = ttk.Entry(profile_driver_frame, font=('Helvetica', 13))
+    name_entry.pack(padx=5, pady=5, fill=BOTH)
+
+    type_label = ttk.Label(profile_driver_frame, text="Category:")
+    type_label.pack(padx=5, pady=5, fill=BOTH)
+    category = ["Staff", "Faculty", "Independents", "Graduate Students"]  # Replace with your options
+    type_entry = ttk.Combobox(master=profile_driver_frame, font=('Helvetica', 13), values=category)
+    type_entry.pack(padx=5, pady=5, fill=BOTH)
+
+    id_label = ttk.Label(profile_driver_frame, text="ID:")
+    id_label.pack(padx=5, pady=5, fill=BOTH)
+    id_entry = ttk.Entry(profile_driver_frame, font=('Helvetica', 13))
+    id_entry.pack(padx=5, pady=5, fill=BOTH)
+
+    phone_label = ttk.Label(profile_driver_frame, text="Phone:")
+    phone_label.pack(padx=5, pady=5, fill=BOTH)
+    phone_entry = ttk.Entry(profile_driver_frame, font=('Helvetica', 13))
+    phone_entry.pack(padx=5, pady=5, fill=BOTH)
+
+    instruction_text2 = "Vehicle Details: "
+    instruction2 = ttk.Label(profile_driver_frame, text=instruction_text2)
+    instruction2.pack(fill=X, pady=(20, 5))
+
+    plate_label = ttk.Label(profile_driver_frame, text="Plate number:")
+    plate_label.pack(padx=5, pady=5, fill=BOTH)
+    plate_entry = ttk.Entry(profile_driver_frame, font=('Helvetica', 13))
+    plate_entry.pack(padx=5, pady=5, fill=BOTH)
+
+    vehicle_type_label = ttk.Label(profile_driver_frame, text="Vehicle type:")
+    vehicle_type_label.pack(padx=5, pady=5, fill=BOTH)
+    vehicle_type_entry = ttk.Entry(profile_driver_frame, font=('Helvetica', 13))
+    vehicle_type_entry.pack(padx=5, pady=5, fill=BOTH)
+
+    vehicle_color_label = ttk.Label(profile_driver_frame, text="Vehicle color:")
+    vehicle_color_label.pack(padx=5, pady=5, fill=BOTH)
+    vehicle_color_entry = ttk.Entry(profile_driver_frame, font=('Helvetica', 13))
+    vehicle_color_entry.pack(padx=5, pady=5, fill=BOTH)
