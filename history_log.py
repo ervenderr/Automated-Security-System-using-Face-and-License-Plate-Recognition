@@ -24,6 +24,8 @@ current_time = datetime.datetime.now(tz=ph_tz).strftime("%H:%M:%S")
 
 captured_image = None
 copied_img_file = None
+update_count = 0
+current_state = True
 
 def history_logs(parent_tab):
     def hist_selectPic():
@@ -189,6 +191,13 @@ def history_logs(parent_tab):
             print('messad')
 
     def clear():
+        id_text.configure(text='')
+        name_text.configure(text='')
+        type_text.configure(text='')
+        plate_text.configure(text='')
+        phone_text.configure(text='')
+        vehicle_type_text.configure(text='')
+        vehicle_color_text.configure(text='')
 
         id_entry.delete(0, END)
         name_entry.delete(0, END)
@@ -206,7 +215,7 @@ def history_logs(parent_tab):
         pass
 
     def delete_driver():
-        pass
+        tree_view.export_all_records()
 
     def selected_row(e):
         global driver_image
@@ -251,6 +260,11 @@ def history_logs(parent_tab):
 
         if driver_info is not None:
 
+            name_text.configure(text=values[0])
+            type_text.configure(text=values[1])
+            id_text.configure(text=values[2])
+            phone_text.configure(text=values[3])
+
             name_entry.insert(0, values[0])
             type_entry.insert(0, values[1])
             id_entry.insert(0, values[2])
@@ -275,6 +289,11 @@ def history_logs(parent_tab):
 
         if plate_nums != '0None':
             for log_entry in vehicle_info:
+
+                plate_text.configure(text=values[0])
+                vehicle_type_text.configure(text=values[1])
+                vehicle_color_text.configure(text=values[2])
+
                 plate_entry.insert(0, log_entry[0])
                 vehicle_type_entry.insert(0, log_entry[1])
                 vehicle_color_entry.insert(0, log_entry[2])
@@ -295,6 +314,53 @@ def history_logs(parent_tab):
     profile_driver_frame.grid(row=0, column=1, sticky="nsew", padx=20, pady=20)
     profile_driver_frame.grid_rowconfigure(0, weight=1)
     profile_driver_frame.grid_columnconfigure(0, weight=1)
+
+    # Frame for driver_image_label
+    image_frame = ttk.Frame(profile_driver_frame)
+    image_frame.pack(pady=(10, 0))
+
+    profile_frame = ttk.Frame(profile_driver_frame)
+    profile_frame.pack(pady=(10, 0))
+
+    profile_frame2 = ttk.Frame(profile_driver_frame)
+
+    update_pages = [profile_frame, profile_frame2]
+
+    def update_drivers():
+        global current_state, update_count
+
+        # profile_frame.pack_forget()
+
+        if not update_count > len(update_pages) - 2:
+            for page in update_pages:
+                page.pack_forget()
+
+            update_count += 1
+            page = update_pages[update_count]
+            page.pack(pady=(10, 0))
+
+            # driver_details(profile_frame2)
+
+        current_state = True
+        print(current_state)
+
+    def list_profile_page():
+        global update_count
+
+        if not update_count == 2:
+            for page in update_pages:
+                page.grid_forget()
+                profile_frame2.pack_forget()
+
+            update_count -= 1
+            page = update_pages[update_count]
+            page.grid(row=0, column=3, sticky="nsew", padx=20, pady=20)
+            table_frame.grid_rowconfigure(0, weight=1)
+            table_frame.grid_columnconfigure(0, weight=1)
+
+            profile_frame.pack(pady=(10, 0))
+
+        clear()
 
     separator = ttk.Separator(parent_tab, orient=VERTICAL)
     separator.grid(row=0, column=2, rowspan=2, sticky="ns")
@@ -351,52 +417,59 @@ def history_logs(parent_tab):
     default_profile_icon = ImageTk.PhotoImage(default_profile_icon_image)
 
     # Replace profile_icon_label with driver_image_label
-    driver_image_label = ttk.Label(profile_driver_frame, image=default_profile_icon)
+    driver_image_label = ttk.Label(image_frame, image=default_profile_icon)
     driver_image_label.pack(pady=(10, 30))
 
     instruction_text = "Driver Details: "
-    instruction = ttk.Label(profile_driver_frame, text=instruction_text, width=50)
+    instruction = ttk.Label(profile_frame, text=instruction_text, width=50)
     instruction.pack(fill=X, pady=10)
 
-    name_label = ttk.Label(profile_driver_frame, text="Name:")
+    name_label = ttk.Label(profile_frame, text="Name:")
     name_label.pack(padx=5, pady=5, fill=BOTH)
-    name_entry = ttk.Entry(profile_driver_frame, font=('Helvetica', 13))
-    name_entry.pack(padx=5, pady=5, fill=BOTH)
+    name_text = ttk.Label(profile_frame, font=('Helvetica', 15, 'bold'), foreground='black',
+                          borderwidth=0, relief="solid", background='#ffffff', padding=(5, 1))
+    name_text.pack(padx=5, pady=5, fill=BOTH)
 
-    type_label = ttk.Label(profile_driver_frame, text="Category:")
+    type_label = ttk.Label(profile_frame, text="Category:")
     type_label.pack(padx=5, pady=5, fill=BOTH)
     category = ["Staff", "Faculty", "Independents", "Graduate Students"]  # Replace with your options
-    type_entry = ttk.Combobox(master=profile_driver_frame, font=('Helvetica', 13), values=category)
-    type_entry.pack(padx=5, pady=5, fill=BOTH)
+    type_text = ttk.Label(profile_frame, font=('Helvetica', 15, 'bold'), foreground='black',
+                          borderwidth=0, relief="solid", background='white', padding=3)
+    type_text.pack(padx=5, pady=5, fill=BOTH)
 
-    id_label = ttk.Label(profile_driver_frame, text="ID:")
+    id_label = ttk.Label(profile_frame, text="ID:")
     id_label.pack(padx=5, pady=5, fill=BOTH)
-    id_entry = ttk.Entry(profile_driver_frame, font=('Helvetica', 13))
-    id_entry.pack(padx=5, pady=5, fill=BOTH)
+    id_text = ttk.Label(profile_frame, font=('Helvetica', 15, 'bold'), foreground='black',
+                        borderwidth=0, relief="solid", background='white', padding=3)
+    id_text.pack(padx=5, pady=5, fill=BOTH)
 
-    phone_label = ttk.Label(profile_driver_frame, text="Phone:")
+    phone_label = ttk.Label(profile_frame, text="Phone:")
     phone_label.pack(padx=5, pady=5, fill=BOTH)
-    phone_entry = ttk.Entry(profile_driver_frame, font=('Helvetica', 13))
-    phone_entry.pack(padx=5, pady=5, fill=BOTH)
+    phone_text = ttk.Label(profile_frame, font=('Helvetica', 15, 'bold'), foreground='black',
+                           borderwidth=0, relief="solid", background='white', padding=3)
+    phone_text.pack(padx=5, pady=5, fill=BOTH)
 
     instruction_text2 = "Vehicle Details: "
-    instruction2 = ttk.Label(profile_driver_frame, text=instruction_text2)
+    instruction2 = ttk.Label(profile_frame, text=instruction_text2)
     instruction2.pack(fill=X, pady=(20, 5))
 
-    plate_label = ttk.Label(profile_driver_frame, text="Plate number:")
+    plate_label = ttk.Label(profile_frame, text="Plate number:")
     plate_label.pack(padx=5, pady=5, fill=BOTH)
-    plate_entry = ttk.Entry(profile_driver_frame, font=('Helvetica', 13))
-    plate_entry.pack(padx=5, pady=5, fill=BOTH)
+    plate_text = ttk.Label(profile_frame, font=('Helvetica', 15, 'bold'), foreground='black',
+                           borderwidth=0, relief="solid", background='white', padding=3)
+    plate_text.pack(padx=5, pady=5, fill=BOTH)
 
-    vehicle_type_label = ttk.Label(profile_driver_frame, text="Vehicle type:")
+    vehicle_type_label = ttk.Label(profile_frame, text="Vehicle type:")
     vehicle_type_label.pack(padx=5, pady=5, fill=BOTH)
-    vehicle_type_entry = ttk.Entry(profile_driver_frame, font=('Helvetica', 13))
-    vehicle_type_entry.pack(padx=5, pady=5, fill=BOTH)
+    vehicle_type_text = ttk.Label(profile_frame, font=('Helvetica', 15, 'bold'), foreground='black',
+                                  borderwidth=0, relief="solid", background='white', padding=3)
+    vehicle_type_text.pack(padx=5, pady=5, fill=BOTH)
 
-    vehicle_color_label = ttk.Label(profile_driver_frame, text="Vehicle color:")
+    vehicle_color_label = ttk.Label(profile_frame, text="Vehicle color:")
     vehicle_color_label.pack(padx=5, pady=5, fill=BOTH)
-    vehicle_color_entry = ttk.Entry(profile_driver_frame, font=('Helvetica', 13))
-    vehicle_color_entry.pack(padx=5, pady=5, fill=BOTH)
+    vehicle_color_text = ttk.Label(profile_frame, font=('Helvetica', 15, 'bold'), foreground='black',
+                                   borderwidth=0, relief="solid", background='white', padding=3)
+    vehicle_color_text.pack(padx=5, pady=5, fill=BOTH)
 
     # Create a new frame for CRUD buttons
     crud_frame = ttk.LabelFrame(parent_tab, text='Actions')
@@ -408,13 +481,57 @@ def history_logs(parent_tab):
     create_button = ttk.Button(crud_frame, text="SAVE", command=hist_save_driver, bootstyle=SUCCESS)
     take_photo = ttk.Button(crud_frame, text="TAKE A PHOTO", command=hist_selectPic, bootstyle=SUCCESS)
     clear_button = ttk.Button(crud_frame, text="CLEAR", command=clear, bootstyle=PRIMARY)
-    delete_button = ttk.Button(crud_frame, text="DELETE", command=delete_driver, bootstyle=DANGER)
+    delete_button = ttk.Button(crud_frame, text="PRINT", command=delete_driver, bootstyle=DANGER)
 
     # Pack the buttons
     create_button.pack(side=LEFT, padx=10, pady=10)
     take_photo.pack(side=LEFT, padx=10, pady=10)
     clear_button.pack(side=LEFT, padx=10, pady=10)
     delete_button.pack(side=LEFT, padx=10, pady=10)
+
+    instruction_text = "Driver Detailss: "
+    instruction = ttk.Label(profile_frame2, text=instruction_text, width=50)
+    instruction.pack(fill=X, pady=10)
+
+    name_label = ttk.Label(profile_frame2, text="Name:")
+    name_label.pack(padx=5, pady=5, fill=BOTH)
+    name_entry = ttk.Entry(profile_frame2, font=('Helvetica', 13))
+    name_entry.pack(padx=5, pady=5, fill=BOTH)
+
+    type_label = ttk.Label(profile_frame2, text="Category:")
+    type_label.pack(padx=5, pady=5, fill=BOTH)
+    category = ["Staff", "Faculty", "Independents", "Graduate Students"]  # Replace with your options
+    type_entry = ttk.Combobox(master=profile_frame2, font=('Helvetica', 13), values=category)
+    type_entry.pack(padx=5, pady=5, fill=BOTH)
+
+    id_label = ttk.Label(profile_frame2, text="ID:")
+    id_label.pack(padx=5, pady=5, fill=BOTH)
+    id_entry = ttk.Entry(profile_frame2, font=('Helvetica', 13))
+    id_entry.pack(padx=5, pady=5, fill=BOTH)
+
+    phone_label = ttk.Label(profile_frame2, text="Phone:")
+    phone_label.pack(padx=5, pady=5, fill=BOTH)
+    phone_entry = ttk.Entry(profile_frame2, font=('Helvetica', 13))
+    phone_entry.pack(padx=5, pady=5, fill=BOTH)
+
+    instruction_text2 = "Vehicle Details: "
+    instruction2 = ttk.Label(profile_frame2, text=instruction_text2)
+    instruction2.pack(fill=X, pady=(20, 5))
+
+    plate_label = ttk.Label(profile_frame2, text="Plate number:")
+    plate_label.pack(padx=5, pady=5, fill=BOTH)
+    plate_entry = ttk.Entry(profile_frame2, font=('Helvetica', 13))
+    plate_entry.pack(padx=5, pady=5, fill=BOTH)
+
+    vehicle_type_label = ttk.Label(profile_frame2, text="Vehicle type:")
+    vehicle_type_label.pack(padx=5, pady=5, fill=BOTH)
+    vehicle_type_entry = ttk.Entry(profile_frame2, font=('Helvetica', 13))
+    vehicle_type_entry.pack(padx=5, pady=5, fill=BOTH)
+
+    vehicle_color_label = ttk.Label(profile_frame2, text="Vehicle color:")
+    vehicle_color_label.pack(padx=5, pady=5, fill=BOTH)
+    vehicle_color_entry = ttk.Entry(profile_frame2, font=('Helvetica', 13))
+    vehicle_color_entry.pack(padx=5, pady=5, fill=BOTH)
 
     take_photo['command'] = hist_selectPic
 

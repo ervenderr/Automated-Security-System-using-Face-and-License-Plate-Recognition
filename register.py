@@ -182,7 +182,6 @@ def create_driver(parent_tab):
             print('messad')
 
     def print_table():
-
         tree_view.export_all_records()
 
     def selected_driver_row():
@@ -410,6 +409,11 @@ def create_driver(parent_tab):
             print(vehicle_info)
 
             if vehicle_info is not None:
+
+                plate_text.configure(text=values[0])
+                vehicle_type_text.configure(text=values[1])
+                vehicle_color_text.configure(text=values[2])
+
                 plate_entry.insert(0, values[0])
                 vehicle_type_entry.insert(0, values[1])
                 vehicle_color_entry.insert(0, values[2])

@@ -172,7 +172,6 @@ class SSystem(ttk.Frame):
         # Create the navigation bar
         self.nav_bar = ttk.Notebook(self, bootstyle='dark')
         self.nav_bar.pack(fill=BOTH, expand=YES, padx=5)
-        self.nav_bar.configure(height=40, padding=10)
 
         icon_image_path = 'Images/vehicle.png'
         prof_img = ImageTk.PhotoImage(file=r'Images/vehicle.png')
