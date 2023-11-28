@@ -290,9 +290,9 @@ def history_logs(parent_tab):
         if plate_nums != '0None':
             for log_entry in vehicle_info:
 
-                plate_text.configure(text=values[0])
-                vehicle_type_text.configure(text=values[1])
-                vehicle_color_text.configure(text=values[2])
+                plate_text.configure(text=log_entry[0])
+                vehicle_type_text.configure(text=log_entry[1])
+                vehicle_color_text.configure(text=log_entry[2])
 
                 plate_entry.insert(0, log_entry[0])
                 vehicle_type_entry.insert(0, log_entry[1])
@@ -300,6 +300,7 @@ def history_logs(parent_tab):
 
         if plate_nums == '0None':
             plate_entry.insert(0, values[3])
+            plate_text.configure(text=values[3])
 
         driver_image_label.config(image=driver_image)
         driver_image_label.image = driver_image
@@ -426,26 +427,26 @@ def history_logs(parent_tab):
 
     name_label = ttk.Label(profile_frame, text="Name:")
     name_label.pack(padx=5, pady=5, fill=BOTH)
-    name_text = ttk.Label(profile_frame, font=('Helvetica', 15, 'bold'), foreground='black',
+    name_text = ttk.Label(profile_frame, font=('Helvetica', 15, 'bold'), foreground='#20374C',
                           borderwidth=0, relief="solid", background='#ffffff', padding=(5, 1))
     name_text.pack(padx=5, pady=5, fill=BOTH)
 
     type_label = ttk.Label(profile_frame, text="Category:")
     type_label.pack(padx=5, pady=5, fill=BOTH)
     category = ["Staff", "Faculty", "Independents", "Graduate Students"]  # Replace with your options
-    type_text = ttk.Label(profile_frame, font=('Helvetica', 15, 'bold'), foreground='black',
+    type_text = ttk.Label(profile_frame, font=('Helvetica', 15, 'bold'), foreground='#20374C',
                           borderwidth=0, relief="solid", background='white', padding=3)
     type_text.pack(padx=5, pady=5, fill=BOTH)
 
     id_label = ttk.Label(profile_frame, text="ID:")
     id_label.pack(padx=5, pady=5, fill=BOTH)
-    id_text = ttk.Label(profile_frame, font=('Helvetica', 15, 'bold'), foreground='black',
+    id_text = ttk.Label(profile_frame, font=('Helvetica', 15, 'bold'), foreground='#20374C',
                         borderwidth=0, relief="solid", background='white', padding=3)
     id_text.pack(padx=5, pady=5, fill=BOTH)
 
     phone_label = ttk.Label(profile_frame, text="Phone:")
     phone_label.pack(padx=5, pady=5, fill=BOTH)
-    phone_text = ttk.Label(profile_frame, font=('Helvetica', 15, 'bold'), foreground='black',
+    phone_text = ttk.Label(profile_frame, font=('Helvetica', 15, 'bold'), foreground='#20374C',
                            borderwidth=0, relief="solid", background='white', padding=3)
     phone_text.pack(padx=5, pady=5, fill=BOTH)
 
@@ -455,19 +456,19 @@ def history_logs(parent_tab):
 
     plate_label = ttk.Label(profile_frame, text="Plate number:")
     plate_label.pack(padx=5, pady=5, fill=BOTH)
-    plate_text = ttk.Label(profile_frame, font=('Helvetica', 15, 'bold'), foreground='black',
+    plate_text = ttk.Label(profile_frame, font=('Helvetica', 15, 'bold'), foreground='#20374C',
                            borderwidth=0, relief="solid", background='white', padding=3)
     plate_text.pack(padx=5, pady=5, fill=BOTH)
 
     vehicle_type_label = ttk.Label(profile_frame, text="Vehicle type:")
     vehicle_type_label.pack(padx=5, pady=5, fill=BOTH)
-    vehicle_type_text = ttk.Label(profile_frame, font=('Helvetica', 15, 'bold'), foreground='black',
+    vehicle_type_text = ttk.Label(profile_frame, font=('Helvetica', 15, 'bold'), foreground='#20374C',
                                   borderwidth=0, relief="solid", background='white', padding=3)
     vehicle_type_text.pack(padx=5, pady=5, fill=BOTH)
 
     vehicle_color_label = ttk.Label(profile_frame, text="Vehicle color:")
     vehicle_color_label.pack(padx=5, pady=5, fill=BOTH)
-    vehicle_color_text = ttk.Label(profile_frame, font=('Helvetica', 15, 'bold'), foreground='black',
+    vehicle_color_text = ttk.Label(profile_frame, font=('Helvetica', 15, 'bold'), foreground='#20374C',
                                    borderwidth=0, relief="solid", background='white', padding=3)
     vehicle_color_text.pack(padx=5, pady=5, fill=BOTH)
 

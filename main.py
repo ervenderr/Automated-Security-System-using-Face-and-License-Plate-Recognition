@@ -63,7 +63,9 @@ frame_queue = queue.Queue()
 class SSystem(ttk.Frame):
     def __init__(self, master_window):
 
-        self.current_state = 'disabled'
+        self.update_count = 0
+        self.update_pages = []
+        self.current_state = 'focus'
         self.widget = None
         self.widgets = {}
         self.form_input = None
@@ -138,6 +140,15 @@ class SSystem(ttk.Frame):
         self.plate = ttk.StringVar(value="")
         self.vehicle_type = ttk.StringVar(value="")
         self.vehicle_color = ttk.StringVar(value="")
+
+        self.driver_name_label = None
+        self.type_label = None
+        self.id_number_label = None
+        self.phone_label = None
+        self.plate_label = None
+        self.vehicle_type_label = None
+        self.vehicle_color_label = None
+
         self.plate = ttk.StringVar(value="")
         ph_tz = pytz.timezone('Asia/Manila')
         current_time = datetime.datetime.now(tz=ph_tz).strftime("%I:%M %p")
@@ -338,18 +349,18 @@ class SSystem(ttk.Frame):
         self.border_style.configure("license_border.TLabel", bordercolor=self.camera_border_color2,
                                     sunkencost=2)
 
-        self.camera_label1 = ttk.Label(camera_container, borderwidth=5, relief="solid", style="face_border.TLabel")
+        self.camera_label1 = ttk.Label(camera_container, borderwidth=3, relief="solid", style="face_border.TLabel")
         self.border_style.configure("license_border.TLabel", bordercolor=self.camera_border_color2)
 
         # Label to display the first camera feed
-        self.camera_label2 = ttk.Label(camera_container, borderwidth=5, relief="solid", style="license_border.TLabel")
+        self.camera_label2 = ttk.Label(camera_container, borderwidth=3, relief="solid", style="license_border.TLabel")
         self.camera_label1.pack(side=LEFT, padx=(0, 10))
 
         # Label to display the second camera feed
         self.camera_label2 = ttk.Label(camera_container, borderwidth=3, relief="solid", style="license_border.TLabel")
         self.camera_label2.pack(side=RIGHT)
 
-        self.start_camera_feed(1, self.camera_label1)
+        self.start_camera_feed(2, self.camera_label1)
         self.start_camera_feed(2, self.camera_label2)
 
         # Separator line between camera feeds and driver details
@@ -358,16 +369,22 @@ class SSystem(ttk.Frame):
         separator.grid_rowconfigure(0, weight=1)
         separator.grid_columnconfigure(0, weight=1)
 
+        container_frame.grid_columnconfigure(5, weight=1)
+
         # Frame for the profile icon and driver details form
         profile_driver_frame = ttk.Frame(container_frame)
         profile_driver_frame.grid(row=0, column=5, sticky="nsew", padx=(0, 15))
         profile_driver_frame.grid_rowconfigure(0, weight=1)
-
-        container_frame.grid_columnconfigure(5, weight=1)
+        profile_driver_frame.grid_columnconfigure(0, weight=1)
 
         # Create a container for profile icon and driver's image
         image_container = ttk.Frame(profile_driver_frame)
-        image_container.pack(pady=5)
+        image_container.pack()
+
+        details_container = ttk.Frame(profile_driver_frame)
+        details_container.pack(pady=5, fill='both')
+
+        details_container2 = ttk.Frame(profile_driver_frame)
 
         # Profile icon label
         profile_icon_path = "images/Profile_Icon.png"  # Replace with the path to your profile icon image
@@ -376,11 +393,15 @@ class SSystem(ttk.Frame):
         self.profile_icon = ImageTk.PhotoImage(profile_icon_image)
 
         # Replace profile_icon_label with driver_image_label
-        self.driver_image_label = ttk.Label(profile_driver_frame, image=self.profile_icon, justify=CENTER)
+        self.driver_image_label = ttk.Label(image_container, image=self.profile_icon, justify=CENTER)
         self.driver_image_label.pack(pady=(5, 5))
 
         instruction_text = "Driver Details: "
-        instruction = ttk.Label(profile_driver_frame, text=instruction_text)
+        instruction = ttk.Label(details_container, text=instruction_text)
+        instruction.pack(fill=X, pady=5)
+
+        instruction_text = "Driver Details: "
+        instruction = ttk.Label(details_container2, text=instruction_text)
         instruction.pack(fill=X, pady=5)
 
         form_entry_labels = ["Name: ", "Category: ", "ID number: ", "Phone: ", "Plate number: ", "Vehicle type: ", "Vehicle color: "]
@@ -388,9 +409,65 @@ class SSystem(ttk.Frame):
                            self.vehicle_color]
 
         for i, (label, var) in enumerate(zip(form_entry_labels, form_entry_vars)):
-            self.create_form_entry(profile_driver_frame, label, var)
+            self.create_form_entry(details_container2, label, var)
 
-        self.create_buttonbox(profile_driver_frame)
+        self.update_pages = [details_container, details_container2]
+
+        name_label = ttk.Label(details_container, text="Name:")
+        name_label.pack(padx=12, pady=(5, 0), fill=BOTH)
+        name_text = ttk.Label(details_container, font=('Helvetica', 15, 'bold'), foreground='#20374C',
+                            borderwidth=0, relief="solid", background='white', padding=3)
+        name_text.pack(padx=5, pady=5, fill=BOTH)
+
+        type_label = ttk.Label(details_container, text="Category:")
+        type_label.pack(padx=12, pady=(15, 0), fill=BOTH)
+        category = ["Staff", "Faculty", "Independents", "Graduate Students"]  # Replace with your options
+        type_text = ttk.Label(details_container, font=('Helvetica', 15, 'bold'), foreground='#20374C',
+                              borderwidth=0, relief="solid", background='white', padding=3)
+        type_text.pack(padx=5, pady=5, fill=BOTH)
+
+        id_label = ttk.Label(details_container, text="ID:")
+        id_label.pack(padx=12, pady=(15, 0), fill=BOTH)
+        id_text = ttk.Label(details_container, font=('Helvetica', 15, 'bold'), foreground='#20374C',
+                            borderwidth=0, relief="solid", background='white', padding=3)
+        id_text.pack(padx=5, pady=5, fill=BOTH)
+
+        phone_label = ttk.Label(details_container, text="Phone:")
+        phone_label.pack(padx=12, pady=(15, 0), fill=BOTH)
+        phone_text = ttk.Label(details_container, font=('Helvetica', 15, 'bold'), foreground='#20374C',
+                               borderwidth=0, relief="solid", background='white', padding=3)
+        phone_text.pack(padx=5, pady=5, fill=BOTH)
+
+        plate_label = ttk.Label(details_container, text="Plate number:")
+        plate_label.pack(padx=12, pady=(15, 0), fill=BOTH)
+        plate_text = ttk.Label(details_container, font=('Helvetica', 15, 'bold'), foreground='#20374C',
+                               borderwidth=0, relief="solid", background='white', padding=3)
+        plate_text.pack(padx=5, pady=5, fill=BOTH)
+
+        vehicle_type_label = ttk.Label(details_container, text="Vehicle type:")
+        vehicle_type_label.pack(padx=12, pady=(15, 0), fill=BOTH)
+        vehicle_type_text = ttk.Label(details_container, font=('Helvetica', 15, 'bold'), foreground='#20374C',
+                                      borderwidth=0, relief="solid", background='white', padding=3)
+        vehicle_type_text.pack(padx=5, pady=5, fill=BOTH)
+
+        vehicle_color_label = ttk.Label(details_container, text="Vehicle color:")
+        vehicle_color_label.pack(padx=12, pady=(15, 0), fill=BOTH)
+        vehicle_color_text = ttk.Label(details_container, font=('Helvetica', 15, 'bold'), foreground='#20374C',
+                                       borderwidth=0, relief="solid", background='white', padding=3)
+        vehicle_color_text.pack(padx=5, pady=5, fill=BOTH)
+
+        self.create_buttonbox(details_container)
+        self.create_buttonbox(details_container2)
+
+    def update_driver(self):
+        # Hide all pages first
+        for page in self.update_pages:
+            page.pack_forget()
+
+        # Toggle between the pages
+        self.update_count = (self.update_count + 1) % len(self.update_pages)
+        page = self.update_pages[self.update_count]
+        page.pack(pady=5, fill='both')
 
     def setup_exit_tab(self, scrolled_exit_frame):
         container_frame = ttk.Frame(scrolled_exit_frame)
@@ -701,7 +778,7 @@ class SSystem(ttk.Frame):
             # Resize frame for display
 
             # Perform face recognition on the second camera feed (camera_id=1)
-            if self.face_recognition_enabled and camera_id == 1:
+            if self.face_recognition_enabled and camera_id == 2:
                 face_cam = frame
                 face_photo = ImageTk.PhotoImage(image=Image.fromarray(face_cam))
                 camera_label.configure(image=face_photo, borderwidth=1, relief="solid")
@@ -877,7 +954,7 @@ class SSystem(ttk.Frame):
                     self.face_recognized = True
                     self.camera_border_color2 = "#00ff00"
                     self.border_style.configure("face_border.TLabel", bordercolor=self.camera_border_color2,
-                                                borderwidth=4)
+                                                borderwidth=3)
 
                 else:
 
@@ -907,7 +984,7 @@ class SSystem(ttk.Frame):
 
                         self.camera_border_color2 = "#ff0000"
                         self.border_style.configure("face_border.TLabel", bordercolor=self.camera_border_color2,
-                                                    borderwidth=4)
+                                                    borderwidth=3)
 
                         self.face_frame_counter = 1
 
@@ -985,7 +1062,7 @@ class SSystem(ttk.Frame):
                             self.license_recognized = True
                             self.camera_border_color2 = "#00ff00"
                             self.border_style.configure("license_border.TLabel", bordercolor=self.camera_border_color2,
-                                                        borderwidth=4)
+                                                        borderwidth=3)
                             cv2.rectangle(self.license_cam, (int(x1), int(y1)), (int(x2), int(y2)), (255, 0, 0), 2)
 
                             self.license_counter = 1
@@ -1022,7 +1099,7 @@ class SSystem(ttk.Frame):
                                 self.camera_border_color2 = "#ff0000"
                                 self.border_style.configure("license_border.TLabel",
                                                             bordercolor=self.camera_border_color2,
-                                                            borderwidth=4)
+                                                            borderwidth=3)
                                 self.license_counter = 1
                                 self.license_recognized = False
 
@@ -1103,6 +1180,62 @@ class SSystem(ttk.Frame):
 
         return self.widgets[var_name]
 
+    def create_form_label(self, container, label, variable):
+        form_field_container = ttk.Frame(container)
+        form_field_container.pack(fill=X, pady=5)
+
+        entry_style = ttk.Style()
+        entry_var = variable
+        var_name = str(variable)  # Use the variable name as a string
+
+        form_field_label = ttk.Label(master=form_field_container, text=label, width=15)
+        form_field_label.grid(row=0, column=0, padx=12, pady=(0, 5), sticky="w")
+
+        if variable is self.plate:
+            form_input = ttk.Entry(master=form_field_container, textvariable=entry_var, font=('Helvetica', 13))
+            form_input.grid(row=1, column=0, padx=5, pady=(0, 5), sticky="ew")
+            self.widgets[var_name] = form_input
+
+            if self.face_unauthorized:
+                plate_btn = ttk.Button(master=form_field_container, text="Find", bootstyle="danger",
+                                       command=self.display_assoc_driver)
+                plate_btn.grid(row=1, column=1, padx=(5, 0), pady=(0, 5))
+
+                form_field_container.grid_columnconfigure(0, weight=1)
+                form_field_container.grid_columnconfigure(1, weight=0)
+
+        if variable is self.id_number:
+            id_input = ttk.Entry(master=form_field_container, textvariable=entry_var, font=('Helvetica', 13))
+            id_input.grid(row=1, column=0, padx=5, pady=(0, 5), sticky="ew")
+
+            if self.license_unauthorized:
+                id_btn = ttk.Button(master=form_field_container, text="Find", bootstyle="danger",
+                                    command=self.display_assoc_vehicle)
+                id_btn.grid(row=1, column=1, padx=(5, 0), pady=(0, 5))
+
+                form_field_container.grid_columnconfigure(0, weight=1)
+                form_field_container.grid_columnconfigure(1, weight=0)
+
+        if variable is self.type:
+            category = ["Staff", "Faculty", "Independents", "Graduate Students"]
+            combobox = ttk.Combobox(master=form_field_container, textvariable=entry_var, font=('Helvetica', 13),
+                                    state=self.current_state, values=category)
+            combobox.grid(row=1, column=0, padx=5, pady=(0, 5), sticky="ew")
+            self.widgets[var_name] = combobox
+            self.widget = combobox
+        else:
+            self.form_input = ttk.Entry(master=form_field_container, textvariable=entry_var, font=('Helvetica', 13),
+                                        state=self.current_state)
+            self.form_input.grid(row=1, column=0, padx=5, pady=(0, 5), sticky="ew")
+            self.widgets[var_name] = self.form_input
+            self.widget = self.form_input
+
+        form_field_container.grid_columnconfigure(0, weight=1)
+
+        print('selfstates:', self.states)
+
+        return self.widgets[var_name]
+
     def entry_labels(self, container):
         form_field_container = ttk.Frame(container)
         form_field_container.pack(fill=X, pady=5)
@@ -1114,7 +1247,7 @@ class SSystem(ttk.Frame):
 
     def create_buttonbox(self, container):
         button_container = ttk.Frame(container)
-        button_container.pack(fill=X, expand=YES, pady=(10, 5))
+        button_container.pack(fill=X, expand=YES, pady=(50, 5))
         button_container.columnconfigure(0, weight=1)
 
         btn_style = ttk.Style().configure('TButton', font=('Helvetica', 13))
@@ -1131,7 +1264,7 @@ class SSystem(ttk.Frame):
         submit_btn = ttk.Button(
             master=button_container,
             text="UPDATE",
-            command=self.enable_fields,
+            command=self.update_driver,
             bootstyle=SUCCESS,
             style=btn_style
         )
@@ -1202,11 +1335,11 @@ class SSystem(ttk.Frame):
 
         self.camera_border_color2 = "white"
         self.border_style.configure("face_border.TLabel", bordercolor=self.camera_border_color2,
-                                    borderwidth=4)
+                                    borderwidth=3)
 
         self.camera_border_color1 = "white"
         self.border_style.configure("license_border.TLabel", bordercolor=self.camera_border_color1,
-                                    borderwidth=4)
+                                    borderwidth=3)
 
         self.update_driver_details()
 
@@ -1224,18 +1357,6 @@ class SSystem(ttk.Frame):
         if self.cap is not None:
             self.cap.release()
         self.quit()
-
-    def enable_fields(self):
-
-        if self.current_state == 'focus':
-            self.current_state = 'disabled'
-        else:
-            self.current_state = 'focus'
-
-        for widget in self.widgets.values():
-            widget.configure(state=self.current_state)
-
-        print(self.current_state)
 
     def register_driver(self):
         return
