@@ -1,11 +1,7 @@
 # database.py
 import datetime
-
-# import pyrebase
-# import firebase_admin
-# from firebase_admin import credentials, storage
 import sqlite3
-
+from prettytable import PrettyTable
 import pytz
 
 
@@ -375,10 +371,6 @@ def deleted(driver_id):
 # Example usage
 ids = ''
 deleted(ids)
-
-
-import sqlite3
-from prettytable import PrettyTable
 
 conn = sqlite3.connect('drivers.db')
 c = conn.cursor()

@@ -6,7 +6,6 @@ from tkinter.font import nametofont
 
 # import torch
 import cv2
-import tkinter as tk
 from tkinter import *
 
 import face_recognition
@@ -41,7 +40,7 @@ from database import *
 import pytesseract
 from unregistered_encoding import process_images
 
-pytesseract.pytesseract.tesseract_cmd = r'G:\Program Files\Tesseract-OCR\tesseract.exe'
+pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
 # reader = easyocr.Reader(['en'], gpu=True)x
 # Load the YOLO model
@@ -54,7 +53,7 @@ frame_queue = queue.Queue()
 
 
 # port = 'COM6'
-# pin = 10False
+# pin = 10
 # board = Arduino(port)
 #
 # board.digital[pin].mode = SERVO
@@ -183,6 +182,7 @@ class SSystem(ttk.Frame):
         # Create the navigation bar
         self.nav_bar = ttk.Notebook(self, bootstyle='dark')
         self.nav_bar.pack(fill=BOTH, expand=YES, padx=5)
+        self.nav_bar.configure(height=40, padding=5)
 
         icon_image_path = 'Images/vehicle.png'
         prof_img = ImageTk.PhotoImage(file=r'Images/vehicle.png')
@@ -191,6 +191,9 @@ class SSystem(ttk.Frame):
         real_icon = ImageTk.PhotoImage(icon_image)
 
         # Home Tab
+
+        vehicle = PhotoImage(file=r'Images/menu.png')
+
         home_tab = ttk.Frame(self.nav_bar)
         self.nav_bar.add(home_tab, text="ENTRY", image=real_icon, compound=BOTTOM)
         self.tab_frames.append(home_tab)
@@ -202,7 +205,7 @@ class SSystem(ttk.Frame):
 
         # Exit Tab
         exit_tab = ttk.Frame(self.nav_bar)
-        self.nav_bar.add(exit_tab, text="EXIT", image=prof_img, compound=ttk.BOTTOM)
+        self.nav_bar.add(exit_tab, text="EXIT", image=vehicle, compound='right')
         self.tab_frames.append(exit_tab)
 
         scrolled_exit_frame = ScrolledFrame(exit_tab, width=1400, height=700, autohide=True, bootstyle='dark round')
@@ -360,8 +363,8 @@ class SSystem(ttk.Frame):
         self.camera_label2 = ttk.Label(camera_container, borderwidth=3, relief="solid", style="license_border.TLabel")
         self.camera_label2.pack(side=RIGHT)
 
-        self.start_camera_feed(2, self.camera_label1)
-        self.start_camera_feed(2, self.camera_label2)
+        self.start_camera_feed(1, self.camera_label1)
+        self.start_camera_feed(0, self.camera_label2)
 
         # Separator line between camera feeds and driver details
         separator = ttk.Separator(container_frame, orient=VERTICAL)
@@ -400,64 +403,65 @@ class SSystem(ttk.Frame):
         instruction = ttk.Label(details_container, text=instruction_text)
         instruction.pack(fill=X, pady=5)
 
-        instruction_text = "Driver Details: "
-        instruction = ttk.Label(details_container2, text=instruction_text)
-        instruction.pack(fill=X, pady=5)
+        # instruction_text = "Driver Details: "
+        # instruction = ttk.Label(details_container2, text=instruction_text)
+        # instruction.pack(fill=X, pady=5)
 
-        form_entry_labels = ["Name: ", "Category: ", "ID number: ", "Phone: ", "Plate number: ", "Vehicle type: ", "Vehicle color: "]
+        form_entry_labels = ["Name: ", "Category: ", "ID number: ", "Phone: ", "Plate number: ", "Vehicle type: ",
+                             "Vehicle color: "]
         form_entry_vars = [self.driver_name, self.type, self.id_number, self.phone, self.plate, self.vehicle_type,
                            self.vehicle_color]
 
         for i, (label, var) in enumerate(zip(form_entry_labels, form_entry_vars)):
-            self.create_form_entry(details_container2, label, var)
+            self.create_form_entry(details_container, label, var)
 
-        self.update_pages = [details_container, details_container2]
-
-        name_label = ttk.Label(details_container, text="Name:")
-        name_label.pack(padx=12, pady=(5, 0), fill=BOTH)
-        name_text = ttk.Label(details_container, font=('Helvetica', 15, 'bold'), foreground='#20374C',
-                            borderwidth=0, relief="solid", background='white', padding=3)
-        name_text.pack(padx=5, pady=5, fill=BOTH)
-
-        type_label = ttk.Label(details_container, text="Category:")
-        type_label.pack(padx=12, pady=(15, 0), fill=BOTH)
-        category = ["Staff", "Faculty", "Independents", "Graduate Students"]  # Replace with your options
-        type_text = ttk.Label(details_container, font=('Helvetica', 15, 'bold'), foreground='#20374C',
-                              borderwidth=0, relief="solid", background='white', padding=3)
-        type_text.pack(padx=5, pady=5, fill=BOTH)
-
-        id_label = ttk.Label(details_container, text="ID:")
-        id_label.pack(padx=12, pady=(15, 0), fill=BOTH)
-        id_text = ttk.Label(details_container, font=('Helvetica', 15, 'bold'), foreground='#20374C',
-                            borderwidth=0, relief="solid", background='white', padding=3)
-        id_text.pack(padx=5, pady=5, fill=BOTH)
-
-        phone_label = ttk.Label(details_container, text="Phone:")
-        phone_label.pack(padx=12, pady=(15, 0), fill=BOTH)
-        phone_text = ttk.Label(details_container, font=('Helvetica', 15, 'bold'), foreground='#20374C',
-                               borderwidth=0, relief="solid", background='white', padding=3)
-        phone_text.pack(padx=5, pady=5, fill=BOTH)
-
-        plate_label = ttk.Label(details_container, text="Plate number:")
-        plate_label.pack(padx=12, pady=(15, 0), fill=BOTH)
-        plate_text = ttk.Label(details_container, font=('Helvetica', 15, 'bold'), foreground='#20374C',
-                               borderwidth=0, relief="solid", background='white', padding=3)
-        plate_text.pack(padx=5, pady=5, fill=BOTH)
-
-        vehicle_type_label = ttk.Label(details_container, text="Vehicle type:")
-        vehicle_type_label.pack(padx=12, pady=(15, 0), fill=BOTH)
-        vehicle_type_text = ttk.Label(details_container, font=('Helvetica', 15, 'bold'), foreground='#20374C',
-                                      borderwidth=0, relief="solid", background='white', padding=3)
-        vehicle_type_text.pack(padx=5, pady=5, fill=BOTH)
-
-        vehicle_color_label = ttk.Label(details_container, text="Vehicle color:")
-        vehicle_color_label.pack(padx=12, pady=(15, 0), fill=BOTH)
-        vehicle_color_text = ttk.Label(details_container, font=('Helvetica', 15, 'bold'), foreground='#20374C',
-                                       borderwidth=0, relief="solid", background='white', padding=3)
-        vehicle_color_text.pack(padx=5, pady=5, fill=BOTH)
+        # self.update_pages = [details_container, details_container2]
+        #
+        # name_label = ttk.Label(details_container, text="Name:")
+        # name_label.pack(padx=12, pady=(5, 0), fill=BOTH)
+        # name_text = ttk.Label(details_container, font=('Helvetica', 15, 'bold'), foreground='#20374C',
+        #                       borderwidth=0, relief="solid", background='white', padding=3)
+        # name_text.pack(padx=5, pady=5, fill=BOTH)
+        #
+        # type_label = ttk.Label(details_container, text="Category:")
+        # type_label.pack(padx=12, pady=(15, 0), fill=BOTH)
+        # category = ["Staff", "Faculty", "Independents", "Graduate Students"]  # Replace with your options
+        # type_text = ttk.Label(details_container, font=('Helvetica', 15, 'bold'), foreground='#20374C',
+        #                       borderwidth=0, relief="solid", background='white', padding=3)
+        # type_text.pack(padx=5, pady=5, fill=BOTH)
+        #
+        # id_label = ttk.Label(details_container, text="ID:")
+        # id_label.pack(padx=12, pady=(15, 0), fill=BOTH)
+        # id_text = ttk.Label(details_container, font=('Helvetica', 15, 'bold'), foreground='#20374C',
+        #                     borderwidth=0, relief="solid", background='white', padding=3)
+        # id_text.pack(padx=5, pady=5, fill=BOTH)
+        #
+        # phone_label = ttk.Label(details_container, text="Phone:")
+        # phone_label.pack(padx=12, pady=(15, 0), fill=BOTH)
+        # phone_text = ttk.Label(details_container, font=('Helvetica', 15, 'bold'), foreground='#20374C',
+        #                        borderwidth=0, relief="solid", background='white', padding=3)
+        # phone_text.pack(padx=5, pady=5, fill=BOTH)
+        #
+        # plate_label = ttk.Label(details_container, text="Plate number:")
+        # plate_label.pack(padx=12, pady=(15, 0), fill=BOTH)
+        # plate_text = ttk.Label(details_container, font=('Helvetica', 15, 'bold'), foreground='#20374C',
+        #                        borderwidth=0, relief="solid", background='white', padding=3)
+        # plate_text.pack(padx=5, pady=5, fill=BOTH)
+        #
+        # vehicle_type_label = ttk.Label(details_container, text="Vehicle type:")
+        # vehicle_type_label.pack(padx=12, pady=(15, 0), fill=BOTH)
+        # vehicle_type_text = ttk.Label(details_container, font=('Helvetica', 15, 'bold'), foreground='#20374C',
+        #                               borderwidth=0, relief="solid", background='white', padding=3)
+        # vehicle_type_text.pack(padx=5, pady=5, fill=BOTH)
+        #
+        # vehicle_color_label = ttk.Label(details_container, text="Vehicle color:")
+        # vehicle_color_label.pack(padx=12, pady=(15, 0), fill=BOTH)
+        # vehicle_color_text = ttk.Label(details_container, font=('Helvetica', 15, 'bold'), foreground='#20374C',
+        #                                borderwidth=0, relief="solid", background='white', padding=3)
+        # vehicle_color_text.pack(padx=5, pady=5, fill=BOTH)
 
         self.create_buttonbox(details_container)
-        self.create_buttonbox(details_container2)
+        # self.create_buttonbox(details_container2)
 
     def update_driver(self):
         # Hide all pages first
@@ -778,7 +782,7 @@ class SSystem(ttk.Frame):
             # Resize frame for display
 
             # Perform face recognition on the second camera feed (camera_id=1)
-            if self.face_recognition_enabled and camera_id == 2:
+            if self.face_recognition_enabled and camera_id == 1:
                 face_cam = frame
                 face_photo = ImageTk.PhotoImage(image=Image.fromarray(face_cam))
                 camera_label.configure(image=face_photo, borderwidth=1, relief="solid")
@@ -799,7 +803,7 @@ class SSystem(ttk.Frame):
                 except Exception as e:
                     print("Error in face recognition:", e)
 
-            if self.license_recognition_enabled and camera_id == 2:
+            if self.license_recognition_enabled and camera_id == 0:
                 self.license_cam = frame
 
                 self.license_start = time.time()
@@ -914,32 +918,47 @@ class SSystem(ttk.Frame):
         camera_label.after(30, self.update_camera, cap, camera_label, camera_id)
 
     def process_face_recognition(self, current_encode, current_face, face_cam, camera_label):
-        print("ENCODINGSS")
         with self.face_lock:  # Use the lock to ensure thread safety
 
             for encode_face, face_location in zip(current_encode, current_face):
-                print("ENCODING")
+                # Iterate through encoded faces and locations
+
                 top, right, bottom, left = face_location
+                # Unpack face location bounds
+
                 matches = face_recognition.compare_faces(self.encode_list_known, encode_face, tolerance=0.5)
                 face_dis = face_recognition.face_distance(self.encode_list_known, encode_face)
+
+                # Compare current encode to known encodes
+                # Get face distances to known encodes
 
                 matches_exit = face_recognition.compare_faces(self.un_encode_list_known, encode_face)
                 face_dis_exit = face_recognition.face_distance(self.un_encode_list_known, encode_face)
 
+                # Similarly compare to unknown encodes
+
                 match_index = np.argmin(face_dis)
                 unmatch_index = np.argmin(face_dis_exit)
+
+                # Get index of best match
+
                 if matches[match_index]:
+                    # If match to known face
+
                     self.id = self.driver_ids[match_index]
-                    cv2.rectangle(face_cam, (left, top), (right, bottom), (0, 255, 0), 2)  # Draw green bbox
+                    cv2.rectangle(face_cam, (left, top), (right, bottom), (0, 255, 0), 2)
+                    # Identify person and draw green bbox
 
                     if self.face_counter == 0:
-                        text = "Waiting for license recognition..."
+                        # On first sighting
+
+                        # Display face prompt
+                        text = "Waiting for face recognition..."
                         font = cv2.FONT_HERSHEY_SIMPLEX
                         font_scale = 0.5
-                        font_color = (255, 255, 255)  # White color
+                        font_color = (255, 255, 255)  # White color border
                         line_thickness = 1
 
-                        # Calculate the text size to position it above the bounding box
                         text_size = cv2.getTextSize(text, font, font_scale, line_thickness)[0]
                         text_x = left + (right - left - text_size[0]) // 2
                         text_y = top - 10
@@ -957,8 +976,10 @@ class SSystem(ttk.Frame):
                                                 borderwidth=3)
 
                 else:
+                    # If no match to known face
+                    # Expand box and copy frame
 
-                    expansion_factor = 10  # You can adjust this value as needed
+                    expansion_factor = 10
                     left_expanded = max(0, left - expansion_factor)
                     top_expanded = max(0, top - expansion_factor)
                     right_expanded = min(face_cam.shape[1], right + expansion_factor)
@@ -974,14 +995,17 @@ class SSystem(ttk.Frame):
 
                     # Check if the current frame is less blurred than the best frame
                     if blur < self.face_best_frame_blur and self.face_frame_counter == 0:
+
+                        # Save best frame
                         self.face_best_frame_blur = blur
                         self.face_best_frame = current_frame
-
                         self.save_best_frame()
 
+                        # Reset flags and counters
                         self.face_recognized = False
                         self.face_counter = 1
 
+                        # Set border to red
                         self.camera_border_color2 = "#ff0000"
                         self.border_style.configure("face_border.TLabel", bordercolor=self.camera_border_color2,
                                                     borderwidth=3)
@@ -992,6 +1016,7 @@ class SSystem(ttk.Frame):
                     print("face_counter: ", self.face_frame_counter)
 
     def save_best_frame(self):
+        # Save best unknown face frame to file
         if self.face_best_frame is not None:
             frame_rgb = cv2.cvtColor(self.face_best_frame, cv2.COLOR_BGR2RGB)
             frame_filename = os.path.join(self.frame_directory, "best_frame.jpg")
@@ -1125,12 +1150,14 @@ class SSystem(ttk.Frame):
         frame_queue.put(self.license_cam)
 
     def create_form_entry(self, container, label, variable):
+
         form_field_container = ttk.Frame(container)
         form_field_container.pack(fill=X, pady=5)
 
         entry_style = ttk.Style()
+
         entry_var = variable
-        var_name = str(variable)  # Use the variable name as a string
+        var_name = str(variable)
 
         form_field_label = ttk.Label(master=form_field_container, text=label, width=15)
         form_field_label.grid(row=0, column=0, padx=12, pady=(0, 5), sticky="w")
@@ -1141,6 +1168,7 @@ class SSystem(ttk.Frame):
             self.widgets[var_name] = form_input
 
             if self.face_unauthorized:
+
                 plate_btn = ttk.Button(master=form_field_container, text="Find", bootstyle="danger",
                                        command=self.display_assoc_driver)
                 plate_btn.grid(row=1, column=1, padx=(5, 0), pady=(0, 5))
@@ -1161,6 +1189,7 @@ class SSystem(ttk.Frame):
                 form_field_container.grid_columnconfigure(1, weight=0)
 
         if variable is self.type:
+            # If the variable is self.type, create a Combobox instead of an Entry widget
             category = ["Staff", "Faculty", "Independents", "Graduate Students"]
             combobox = ttk.Combobox(master=form_field_container, textvariable=entry_var, font=('Helvetica', 13),
                                     state=self.current_state, values=category)
@@ -1173,66 +1202,10 @@ class SSystem(ttk.Frame):
             self.form_input.grid(row=1, column=0, padx=5, pady=(0, 5), sticky="ew")
             self.widgets[var_name] = self.form_input
             self.widget = self.form_input
+            form_field_container.grid_columnconfigure(0, weight=1)
 
-        form_field_container.grid_columnconfigure(0, weight=1)
-
-        print('selfstates:', self.states)
-
-        return self.widgets[var_name]
-
-    def create_form_label(self, container, label, variable):
-        form_field_container = ttk.Frame(container)
-        form_field_container.pack(fill=X, pady=5)
-
-        entry_style = ttk.Style()
-        entry_var = variable
-        var_name = str(variable)  # Use the variable name as a string
-
-        form_field_label = ttk.Label(master=form_field_container, text=label, width=15)
-        form_field_label.grid(row=0, column=0, padx=12, pady=(0, 5), sticky="w")
-
-        if variable is self.plate:
-            form_input = ttk.Entry(master=form_field_container, textvariable=entry_var, font=('Helvetica', 13))
-            form_input.grid(row=1, column=0, padx=5, pady=(0, 5), sticky="ew")
-            self.widgets[var_name] = form_input
-
-            if self.face_unauthorized:
-                plate_btn = ttk.Button(master=form_field_container, text="Find", bootstyle="danger",
-                                       command=self.display_assoc_driver)
-                plate_btn.grid(row=1, column=1, padx=(5, 0), pady=(0, 5))
-
-                form_field_container.grid_columnconfigure(0, weight=1)
-                form_field_container.grid_columnconfigure(1, weight=0)
-
-        if variable is self.id_number:
-            id_input = ttk.Entry(master=form_field_container, textvariable=entry_var, font=('Helvetica', 13))
-            id_input.grid(row=1, column=0, padx=5, pady=(0, 5), sticky="ew")
-
-            if self.license_unauthorized:
-                id_btn = ttk.Button(master=form_field_container, text="Find", bootstyle="danger",
-                                    command=self.display_assoc_vehicle)
-                id_btn.grid(row=1, column=1, padx=(5, 0), pady=(0, 5))
-
-                form_field_container.grid_columnconfigure(0, weight=1)
-                form_field_container.grid_columnconfigure(1, weight=0)
-
-        if variable is self.type:
-            category = ["Staff", "Faculty", "Independents", "Graduate Students"]
-            combobox = ttk.Combobox(master=form_field_container, textvariable=entry_var, font=('Helvetica', 13),
-                                    state=self.current_state, values=category)
-            combobox.grid(row=1, column=0, padx=5, pady=(0, 5), sticky="ew")
-            self.widgets[var_name] = combobox
-            self.widget = combobox
-        else:
-            self.form_input = ttk.Entry(master=form_field_container, textvariable=entry_var, font=('Helvetica', 13),
-                                        state=self.current_state)
-            self.form_input.grid(row=1, column=0, padx=5, pady=(0, 5), sticky="ew")
-            self.widgets[var_name] = self.form_input
-            self.widget = self.form_input
-
-        form_field_container.grid_columnconfigure(0, weight=1)
-
-        print('selfstates:', self.states)
+        # Make the columns of form_field_container expand relative to the container's width
+        form_field_container.grid_columnconfigure(0, weight=1)  # Set weight for column 0
 
         return self.widgets[var_name]
 
@@ -1357,6 +1330,18 @@ class SSystem(ttk.Frame):
         if self.cap is not None:
             self.cap.release()
         self.quit()
+
+    def enable_fields(self):
+
+        if self.current_state == 'focus':
+            self.current_state = 'disabled'
+        else:
+            self.current_state = 'focus'
+
+        for widget in self.widgets.values():
+            widget.configure(state=self.current_state)
+
+        print(self.current_state)
 
     def register_driver(self):
         return

@@ -27,6 +27,7 @@ copied_img_file = None
 update_count = 0
 current_state = True
 
+
 def history_logs(parent_tab):
     def hist_selectPic():
         global captured_image
@@ -289,7 +290,6 @@ def history_logs(parent_tab):
 
         if plate_nums != '0None':
             for log_entry in vehicle_info:
-
                 plate_text.configure(text=log_entry[0])
                 vehicle_type_text.configure(text=log_entry[1])
                 vehicle_color_text.configure(text=log_entry[2])
@@ -363,6 +363,13 @@ def history_logs(parent_tab):
 
         clear()
 
+    def apply_date_range_filter():
+        start_date = filter_search.entry.get()
+        end_date = filter_search2.entry.get()
+
+        # print(start_date, end_date)
+
+
     separator = ttk.Separator(parent_tab, orient=VERTICAL)
     separator.grid(row=0, column=2, rowspan=2, sticky="ns")
 
@@ -378,6 +385,9 @@ def history_logs(parent_tab):
     time_date_frame.grid_rowconfigure(0, weight=1)
     time_date_frame.grid_columnconfigure(0, weight=1)
 
+    filter_frame = ttk.Frame(time_date_frame)
+    filter_frame.grid(row=2, column=0, sticky="nsew", pady=20)
+
     # Label to display the time and date
     time_date_label = ttk.Label(time_date_frame, text="",
                                 width=50, font=("Arial", 20, "bold"),
@@ -385,6 +395,26 @@ def history_logs(parent_tab):
 
     registered_label_text = ttk.Label(time_date_frame, text="HISTORY LOGS",
                                       width=50, font=("Arial", 20, "bold"))
+
+    filter_label = ttk.Label(filter_frame, text="Date range:")
+    filter_label.grid(row=0, column=0, sticky="nsew")
+
+    filter_date_str = 'Sun, Dec-03-2023'
+    filter_date = datetime.datetime.strptime(filter_date_str, '%a, %b-%d-%Y')
+
+    filter_search = ttk.DateEntry(master=filter_frame, dateformat='%a, %b-%d-%Y', startdate=filter_date,
+                                  firstweekday=2)
+    filter_search.grid(row=1, column=0, sticky="nw")
+
+    filter_to = ttk.Label(filter_frame, text="TO", font=("Arial", 13, "bold"))
+    filter_to.grid(row=1, column=1, sticky="nw", padx=5)
+
+    filter_search2 = ttk.DateEntry(master=filter_frame, dateformat='%a, %b-%d-%Y', startdate=filter_date,
+                                   firstweekday=2)
+    filter_search2.grid(row=1, column=2, sticky="nw")
+
+    filter_to = ttk.Button(filter_frame, text="Apply", command=apply_date_range_filter, bootstyle=SUCCESS)
+    filter_to.grid(row=1, column=3, sticky="nw", padx=5)
 
     # Center the label within the time_date_frame
     time_date_label.grid(row=0, column=0, sticky="nsew")
@@ -537,3 +567,4 @@ def history_logs(parent_tab):
     take_photo['command'] = hist_selectPic
 
     tree_view.view.bind("<ButtonRelease-1>", selected_row)
+

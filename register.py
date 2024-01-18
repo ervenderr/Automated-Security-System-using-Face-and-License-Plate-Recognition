@@ -6,7 +6,6 @@ import EncodeGenerator
 from database import *
 from tables import *
 from tkinter import ttk
-import xlsxwriter
 
 profile_icon = None
 DEFAULT_PROFILE_ICON_PATH = "images/Profile_Icon.png"
